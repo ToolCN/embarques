@@ -1,0 +1,159 @@
+function loadDashboardEmbarques() {
+  showLoader('Cargando dashboard...');
+  var mes = dashMes.getMonth()+1, anio = dashMes.getFullYear();
+  google.script.run
+    .withSuccessHandler(function(res){ hideLoader(); renderDashboard(res||{}); })
+    .withFailureHandler(function(){ hideLoader(); renderDashboard({_sinFuncion:true}); })
+    .getDashboardEmbarques(mes, anio);
+}
+function navegarDashMes(dir) {
+  dashMes.setMonth(dashMes.getMonth()+dir);
+  loadDashboardEmbarques();
+}
+
+function renderDashboard(res) {
+  var mesNom = MESES_ES[dashMes.getMonth()] + ' ' + dashMes.getFullYear();
+  var esHoy = (dashMes.getMonth()===new Date().getMonth()&&dashMes.getFullYear()===new Date().getFullYear());
+  var navHtml = '<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">'
+    +'<button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="navegarDashMes(-1)"><i class="fas fa-chevron-left"></i></button>'
+    +'<h5 class="fw-bold m-0" style="color:var(--primary)">'+mesNom+'</h5>'
+    +'<button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="navegarDashMes(1)"><i class="fas fa-chevron-right"></i></button>'
+    +(esHoy?'':'<button class="btn btn-sm rounded-pill px-2" style="border:1px solid var(--primary);color:var(--primary)" onclick="dashMes=new Date();dashMes.setDate(1);loadDashboardEmbarques()">Hoy</button>')
+    +'</div>';
+
+  if(res._sinFuncion) {
+    document.getElementById('content-area').innerHTML = navHtml
+      +'<div class="alert alert-warning border-0 shadow-sm"><i class="fas fa-exclamation-triangle me-2"></i>'
+      +'<strong>Función pendiente en GAS:</strong> Agrega <code>getDashboardEmbarques(mes,anio)</code> al módulo EmbarquesGS y haz un nuevo Deploy.</div>'
+      + _buildKpiPlaceholder();
+    return;
+  }
+
+  // ── KPIs
+  var kpis = [
+    {bg:'#eff6ff',ic:'fas fa-truck-loading',ic_c:'#1d4ed8',val:fmtKg(res.kgMes),lbl:'KG Enviados (mes)',delta:res.deltaKgMes},
+    {bg:'#f0fdf4',ic:'fas fa-boxes',ic_c:'#15803d',val:fmt0(res.lotesMes),lbl:'Lotes Despachados',delta:res.deltaLotes},
+    {bg:'#fdf4ff',ic:'fas fa-calendar-day',ic_c:'#7e22ce',val:fmtKg(res.kgHoy),lbl:'KG Enviados Hoy',delta:null},
+    {bg:'#fff7ed',ic:'fas fa-fire',ic_c:'#c2410c',val:fmtKg(res.kgSemana),lbl:'KG Esta Semana',delta:res.deltaSemana},
+    {bg:'#f0f9ff',ic:'fas fa-clipboard-list',ic_c:'#0369a1',val:fmt0(res.pedidosActivos),lbl:'Pedidos Activos',delta:null},
+    {bg:'#fef2f2',ic:'fas fa-clipboard-check',ic_c:'#b91c1c',val:fmt0(res.lotesEnCola),lbl:'Lotes en Cola',delta:null}
+  ];
+  var kpiHtml = '<div class="row g-3 mb-4">';
+  kpis.forEach(function(k){
+    var delta = '';
+    if(k.delta!=null){ var up=Number(k.delta)>=0; delta='<div class="dash-kpi-delta '+(up?'up':'down')+'">'+(up?'▲':'▼')+' '+Math.abs(k.delta||0)+'% vs mes ant.</div>'; }
+    kpiHtml += '<div class="col-6 col-md-4 col-xl-2"><div class="dash-kpi"><div class="dash-kpi-icon" style="background:'+k.bg+'"><i class="'+k.ic+'" style="color:'+k.ic_c+'"></i></div>'
+      +'<div><div class="dash-kpi-val">'+k.val+'</div><div class="dash-kpi-lbl">'+k.lbl+'</div>'+delta+'</div></div></div>';
+  });
+  kpiHtml += '</div>';
+
+  // ── Charts
+  var chartsHtml = '<div class="row g-3 mb-4">'
+    +'<div class="col-12 col-lg-6"><div class="card-pro bg-white p-3">'
+    +'<div class="d-flex align-items-center gap-2 mb-2"><i class="fas fa-chart-bar" style="color:var(--primary)"></i><strong style="font-size:.88rem">Material Enviado por Semana</strong></div>'
+    +'<div class="chart-wrap"><canvas id="cSemanal"></canvas></div></div></div>'
+    +'<div class="col-12 col-lg-6"><div class="card-pro bg-white p-3">'
+    +'<div class="d-flex align-items-center gap-2 mb-2"><i class="fas fa-chart-line" style="color:#00897b"></i><strong style="font-size:.88rem">KG Enviados — Últimos 12 Meses</strong></div>'
+    +'<div class="chart-wrap"><canvas id="cMensual"></canvas></div></div></div>'
+    +'</div>';
+
+  // ── Tabla últimos envíos
+  var tablaHtml = '<div class="card-pro bg-white p-3">'
+    +'<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">'
+    +'<strong style="font-size:.9rem"><i class="fas fa-history me-2 text-secondary"></i>Últimos Envíos del Mes</strong>'
+    +'<button class="btn btn-sm rounded-pill fw-bold px-3" style="border:1px solid var(--primary);color:var(--primary)" onclick="loadModule(\'ENVIOS\')"><i class="fas fa-arrow-right me-1"></i>Ver todos</button>'
+    +'</div>'
+    +'<div style="overflow-x:auto"><table class="tbl-emb"><thead><tr>'
+    +'<th>Fecha</th><th>Remisión</th><th>Pedido</th><th>Código</th><th>Descripción</th><th>KG</th><th>Piezas</th><th>Envío</th>'
+    +'</tr></thead><tbody id="t-ultimos"></tbody></table></div></div>';
+
+  document.getElementById('content-area').innerHTML = navHtml + kpiHtml + chartsHtml + tablaHtml;
+
+  // Tabla
+  var tbody = document.getElementById('t-ultimos');
+  var rows = res.ultimosEnvios || [];
+  if(!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Sin envíos en este mes</td></tr>';
+  } else {
+    tbody.innerHTML = rows.map(function(r){
+      return '<tr><td>'+r.fecha+'</td>'
+        +'<td><span class="status-pill" style="background:#dbeafe;color:#1e40af;border-color:#bfdbfe">'+r.remision+'</span></td>'
+        +'<td>'+r.pedido+'</td><td>'+r.codigo+'</td><td style="font-size:.78rem">'+r.descripcion+'</td>'
+        +'<td><strong>'+fmtKg(r.kg)+'</strong></td><td>'+fmt0(r.piezas)+'</td>'
+        +'<td><span class="status-pill" style="background:#dcfce7;color:#166534;border-color:#bbf7d0">'+r.envio+'</span></td></tr>';
+    }).join('');
+  }
+
+  // Destruir charts anteriores
+  if(_chartSemanal){ _chartSemanal.destroy(); _chartSemanal=null; }
+  if(_chartMensual){ _chartMensual.destroy(); _chartMensual=null; }
+
+  var ctxS = document.getElementById('cSemanal');
+  if(ctxS) {
+    _chartSemanal = new Chart(ctxS, {
+      type:'bar',
+      data:{
+        labels: res.semanas || ['S1','S2','S3','S4','S5'],
+        datasets:[{label:'KG',data:res.kgPorSemana||[0,0,0,0,0],
+          backgroundColor:'rgba(21,101,192,.75)',borderRadius:6,borderSkipped:false}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11}}},
+        x:{grid:{display:false},ticks:{font:{size:11}}}}}
+    });
+  }
+  var ctxM = document.getElementById('cMensual');
+  if(ctxM) {
+    var now2 = new Date();
+    var mLab = res.mesesLabels || (function(){
+      var a=[];
+      for(var i=11;i>=0;i--){var d=new Date(now2.getFullYear(),now2.getMonth()-i,1);a.push(MESES_ES[d.getMonth()].substr(0,3)+' '+d.getFullYear().toString().substr(2));}
+      return a;
+    })();
+    _chartMensual = new Chart(ctxM, {
+      type:'line',
+      data:{
+        labels: mLab,
+        datasets:[{label:'KG',data:res.kgPorMes||Array(12).fill(0),
+          borderColor:'#00897b',backgroundColor:'rgba(0,137,123,.1)',fill:true,
+          tension:.35,pointRadius:3,pointHoverRadius:5}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true,grid:{color:'#f1f5f9'},ticks:{font:{size:11}}},
+        x:{grid:{display:false},ticks:{font:{size:10}}}}}
+    });
+  }
+}
+function _buildKpiPlaceholder() {
+  var lbls=['KG Enviados (mes)','Lotes Despachados','KG Hoy','KG Esta Semana','Pedidos Activos','Lotes en Cola'];
+  var bg=['#eff6ff','#f0fdf4','#fdf4ff','#fff7ed','#f0f9ff','#fef2f2'];
+  var ic=['fa-truck-loading','fa-boxes','fa-calendar-day','fa-fire','fa-clipboard-list','fa-clipboard-check'];
+  var h='<div class="row g-3 mb-4">';
+  for(var i=0;i<6;i++) h+='<div class="col-6 col-md-4 col-xl-2"><div class="dash-kpi"><div class="dash-kpi-icon" style="background:'+bg[i]+'"><i class="fas '+ic[i]+'" style="opacity:.3"></i></div><div><div class="dash-kpi-val" style="color:#d1d5db">—</div><div class="dash-kpi-lbl">'+lbls[i]+'</div></div></div></div>';
+  return h+'</div>';
+}
+
+// ══════════════════════════════════════════════════════════
+//  DESPACHOS — Mesa de Control (igual que DespachoEmbarqueHTML)
+// ══════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+// DESPACHOS - Estado
+// _desp_sourceData: todos los lotes cargados hasta ahora
+// _desp_loadedDias: cuántos días ya están en _desp_sourceData
+// _desp_queueData : lotes seleccionados para imprimir
+// ─────────────────────────────────────────────────────────────────────────────
+var _desp_sourceData  = [];
+var _desp_loadedDias  = 0;       // días ya cargados
+var _desp_queueData   = [];
+var _desp_currentItem = null;
+var _desp_editingQueue = false;
+
+// Paginación virtual: cuántos resultados mostrar en el DOM
+var _DESP_PAGE_SIZE   = 60;
+var _desp_visibles    = _DESP_PAGE_SIZE;  // cuántos mostramos actualmente
+
+// Debounce buscador
+var _despTimer        = null;
+var _desp_searchCache = '';
+
+// ─────────────────────────────────────────────────────────────────────────────

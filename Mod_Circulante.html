@@ -1,0 +1,82 @@
+function loadCirculante() {
+  showLoader('Cargando captura circulante...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      _cir_catalogo = (res && res.catalogo) ? res.catalogo : [];
+      _cirRenderCaptura();
+    })
+    .withFailureHandler(function(e){ hideLoader(); document.getElementById('content-area').innerHTML=_modErr('Circulante','getDatosIniciales',e); })
+    .getDatosIniciales();
+}
+
+function _cirRenderCaptura() {
+  var mxDate = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  var movList = ['ALAMBRES','MAQUILA','ACEITES-LUB','REPROCESOS','DEVOLUCIONES','ENTRADAS ETSA','ROOFING','OTROS'];
+
+  var html = '<div class="modulo-inline">'
+    +'<div style="background:#0f172a;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'
+    +'<span class="text-white fw-bold"><i class="fas fa-plus-circle me-2 opacity-75"></i>CAPTURA DE REGISTROS — CIRCULANTE</span>'
+    +'<button class="btn btn-outline-light btn-sm fw-bold rounded-pill px-3" onclick="_cirAbrirModalCat()">⚙️ Gestionar Catálogo</button>'
+    +'</div>'
+    +'<div class="px-3 pb-3 pt-2">'
+    // Cabecera general
+    +'<div class="row g-2 mb-3 align-items-end">'
+    +'<div class="col-auto"><label class="text-muted fw-bold" style="font-size:.7rem;text-transform:uppercase">Fecha</label>'
+    +'<input type="date" id="cir-h-fecha" class="form-control form-control-sm" value="'+mxDate+'" style="min-width:130px"></div>'
+    +'<div class="col-auto"><label class="text-muted fw-bold" style="font-size:.7rem;text-transform:uppercase">Folio Envío</label>'
+    +'<input type="text" id="cir-h-envio" class="form-control form-control-sm" placeholder="Folio..." style="min-width:110px"></div>'
+    +'<div class="col-12"><label class="text-muted fw-bold" style="font-size:.7rem;text-transform:uppercase">Movimiento</label><br>'
+    +movList.map(function(m){ return '<button class="btn btn-sm btn-outline-secondary fw-bold me-1 mb-1 cir-btn-mov" onclick="_cirSetMov(this)" style="transition:background .2s,color .2s">'+m+'</button>'; }).join('')
+    +'</div></div>'
+    +'<div style="overflow-x:auto;max-height:calc(100vh - 350px)">'
+    +'<table class="tbl-emb" id="cir-tbl-cap">'
+    +'<thead><tr style="background:#0f172a;color:white">'
+    +'<th>#</th><th style="min-width:160px">CÓDIGO</th><th style="min-width:200px">DESCRIPCIÓN</th>'
+    +'<th>DIÁM.</th><th>LARGO</th><th>ACERO</th><th style="min-width:90px">PEDIDO</th>'
+    +'<th style="min-width:90px">ORIGEN</th><th style="min-width:100px">CANT.</th>'
+    +'<th style="min-width:110px">UNI</th><th style="min-width:110px">KILOS</th><th style="min-width:110px">KG REC.</th>'
+    +'<th style="min-width:120px">COMENTARIOS</th><th style="width:32px"></th>'
+    +'</tr></thead>'
+    +'<tbody id="cir-tbody-cap"></tbody></table></div>'
+    +'<div class="mt-2 d-flex gap-2 align-items-center flex-wrap">'
+    +'<button class="btn btn-dark btn-sm fw-bold rounded-pill px-3" onclick="_cirNuevaFila()" style="font-size:.78rem">+ AÑADIR REGISTRO</button>'
+    +'<button id="cir-btn-save" class="btn btn-success btn-sm fw-bold rounded-pill px-4" style="display:none" onclick="_cirGuardarTodo()"><i class="fas fa-save me-1"></i>GUARDAR TODO</button>'
+    +'</div></div>'
+    // Modal Catálogo
+    +'<div id="cir-modal-cat" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center">'
+    +'<div style="background:white;border-radius:14px;width:90%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+    +'<div style="background:#0f172a;padding:12px 18px;display:flex;align-items:center;justify-content:space-between">'
+    +'<span class="text-white fw-bold">⚙️ ADMINISTRACIÓN DE CATÁLOGO</span>'
+    +'<button onclick="document.getElementById(\'cir-modal-cat\').style.display=\'none\'" style="background:none;border:none;color:white;font-size:1.3rem;cursor:pointer">✕</button></div>'
+    +'<div style="padding:16px;overflow-y:auto;flex:1">'
+    +'<div class="d-flex gap-2 mb-3">'
+    +'<input type="text" id="cir-cat-search" class="form-control form-control-sm" placeholder="🔍 Buscar por código, descripción, acero..." oninput="_cirFiltrarCatalogo()">'
+    +'<button class="btn btn-success btn-sm fw-bold" onclick="_cirPreparFormCat(\'NUEVO\')">+ Nuevo</button></div>'
+    +'<div style="overflow-x:auto;max-height:250px"><table class="tbl-emb"><thead><tr style="background:#1565c0;color:white"><th>ID</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th><th>DIÁM.</th><th>LARGO</th><th>ACERO</th><th>UNIDAD</th><th></th></tr></thead><tbody id="cir-cat-list-body"></tbody></table></div>'
+    +'<div id="cir-form-cat" class="d-none mt-3 p-3" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0">'
+    +'<strong id="cir-form-cat-title" style="font-size:.85rem;color:#0f172a;display:block;margin-bottom:10px"></strong>'
+    +'<input type="hidden" id="f-cir-id">'
+    +'<div class="row g-2">'
+    +'<div class="col-6"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Código *</label><input id="f-cir-cod" class="form-control form-control-sm"></div>'
+    +'<div class="col-6"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Descripción *</label><input id="f-cir-des" class="form-control form-control-sm"></div>'
+    +'<div class="col-3"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Diámetro</label><input id="f-cir-dia" class="form-control form-control-sm"></div>'
+    +'<div class="col-3"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Largo</label><input id="f-cir-lar" class="form-control form-control-sm"></div>'
+    +'<div class="col-3"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Acero</label><input id="f-cir-ace" class="form-control form-control-sm"></div>'
+    +'<div class="col-3"><label style="font-size:.7rem;font-weight:700;text-transform:uppercase">Unidad</label>'
+    +'<select id="f-cir-uni" class="form-select form-select-sm"><option>KILOS</option><option>PZA</option><option>ROLLO</option></select></div>'
+    +'</div>'
+    +'<div class="d-flex gap-2 mt-3">'
+    +'<button class="btn btn-primary btn-sm fw-bold flex-fill" onclick="_cirGuardarItemCat()">Guardar</button>'
+    +'<button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'cir-form-cat\').classList.add(\'d-none\')">Cancelar</button>'
+    +'</div></div></div></div></div>'
+    +'</div>';
+  document.getElementById('content-area').innerHTML = html;
+  _cirRenderCatalogo(_cir_catalogo.slice(1));
+}
+
+// ══════════════════════════════════════════════════════════
+//  CIRCULANTE CONSULTA (vista separada con filtros por columna igual que Existencia)
+// ══════════════════════════════════════════════════════════
+var _cirCon_dbRaw = [], _cirCon_filtered = [], _cirCon_activeFilters = {};
+var _cirCon_colsToShow = [1,2,3,4,5,6,7,8,9,10,11,12,13,16,17,18];

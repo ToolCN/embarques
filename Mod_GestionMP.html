@@ -1,0 +1,842 @@
+function loadGestionMP() {
+  showLoader('Cargando Gestión MP...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      _gmp_entradasData = [];
+      _gmp_salidasMaster = [];
+      _gmp_cambiosSalidas = {};
+      _gmp_tabActual = 'entradas';
+      // Cargar salidas para la pestaña de salidas
+      _gmpCargarExistenciaSalidas();
+      _gmpRenderUI();
+    })
+    .withFailureHandler(function(e){ hideLoader(); document.getElementById('content-area').innerHTML=_modErr('Gestión MP','getGestionMP',e); })
+    .getGestionMP();
+}
+
+function _gmpCargarExistenciaSalidas() {
+  google.script.run.withSuccessHandler(function(data){
+    _gmp_salidasMaster = data || [];
+    _gmpRenderSalidas();
+  }).getMateriaPrimaData();
+}
+
+function _gmpRenderUI() {
+  var hoy = new Date().toISOString().split('T')[0];
+  var ayer = new Date(); ayer.setDate(ayer.getDate()-1);
+  var ayerStr = ayer.toISOString().split('T')[0];
+  var html = '<div class="modulo-inline" style="display:flex;flex-direction:column;min-height:calc(100vh - 80px)">'
+    // Toolbar
+    +'<div class="modulo-toolbar" style="flex-shrink:0;flex-wrap:wrap;gap:8px">'
+    +'<i class="fas fa-boxes text-white opacity-75"></i>'
+    +'<span class="text-white fw-bold" id="gmp-title-lbl">GESTIÓN MATERIA PRIMA — ENTRADAS</span>'
+    +'<div class="ms-auto d-flex gap-2 flex-wrap">'
+    +'<select id="gmp-mes-reporte" class="form-select form-select-sm" style="max-width:130px">'
+    +'<option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option>'
+    +'<option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option>'
+    +'<option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option>'
+    +'<option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>'
+    +'</select>'
+    +'<button class="btn btn-sm btn-outline-light fw-bold" onclick="_gmpExportarReporte()"><i class="fas fa-file-download me-1"></i>Reporte</button>'
+    +'<button id="gmp-btn-sync" class="btn btn-sm btn-warning fw-bold" style="display:none" onclick="_gmpConfirmarSync()"><i class="fas fa-cloud-upload-alt me-1"></i>SINCRONIZAR</button>'
+    +'<button id="gmp-btn-salidas" class="btn btn-sm btn-danger fw-bold" style="display:none" onclick="_gmpModalSalidasConfirm()"><i class="fas fa-sign-out-alt me-1"></i>GUARDAR <span id="gmp-cnt-salidas">0</span> CAMBIOS</button>'
+    +'</div></div>'
+    // Search bar
+    +'<div style="padding:8px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;flex-shrink:0;display:flex;gap:8px;align-items:center">'
+    +'<input type="text" id="gmp-search" class="form-control form-control-sm" style="max-width:260px" placeholder="🔍 Buscar..." oninput="_gmpFiltrarTablas()">'
+    +'</div>'
+    // Tabs
+    +'<div style="background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:0 14px;flex-shrink:0">'
+    +'<ul class="nav nav-tabs border-0" style="gap:4px">'
+    +'<li class="nav-item"><button id="gmp-tab-ent" class="nav-link active fw-bold" style="color:#1565c0;border-bottom:3px solid #1565c0" onclick="_gmpSwitchTab(this.dataset.tab)" data-tab="entradas"><i class="fas fa-arrow-down me-1"></i>ENTRADAS</button></li>'
+    +'<li class="nav-item"><button id="gmp-tab-sal" class="nav-link fw-bold" style="color:#64748b" onclick="_gmpSwitchTab(this.dataset.tab)" data-tab="salidas"><i class="fas fa-arrow-up me-1"></i>SALIDAS</button></li>'
+    +'<li class="nav-item"><button id="gmp-tab-con" class="nav-link fw-bold" style="color:#64748b" onclick="_gmpSwitchTab(this.dataset.tab)" data-tab="consultas"><i class="fas fa-search me-1"></i>CONSULTAS</button></li>'
+    +'</ul></div>'
+    // ── PANEL ENTRADAS ──
+    +'<div id="gmp-panel-ent" style="flex:1;display:flex;flex-direction:column;overflow:hidden">'
+    +'<div style="padding:8px 14px 6px;background:white;border-bottom:1px solid #f1f5f9;flex-shrink:0">'
+    +'<div class="row g-2 align-items-end">'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Proveedor</label>'
+    +'<input type="text" id="gmp-proveedor" class="form-control form-control-sm" value="TERNIUM" oninput="_gmpUpdateGlobal()"></div>'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Fecha Entrada</label>'
+    +'<input type="date" id="gmp-fecha-ent" class="form-control form-control-sm" value="'+ayerStr+'" onchange="_gmpUpdateGlobal()"></div>'
+    +'<div class="col-auto ms-auto d-flex gap-2">'
+    +'<button class="btn btn-outline-primary btn-sm fw-bold" onclick="_gmpAgregarFilaManual()"><i class="fas fa-plus me-1"></i>Agregar</button>'
+    +'<label class="btn btn-success btn-sm fw-bold mb-0"><i class="fas fa-file-excel me-1"></i>Subir Excel<input type="file" id="gmp-excel-file" accept=".xlsx,.xls" class="d-none" onchange="_gmpHandleExcel(this)"></label>'
+    +'</div></div></div>'
+    +'<div style="flex:1;overflow:auto;padding:0 14px 0">'
+    +'<table class="tbl-emb" id="gmp-tbl-ent">'
+    +'<thead><tr style="background:#1565c0;color:white"><th>PROVEEDOR</th><th>FECHA</th><th>DIÁMETRO</th><th>ACERO</th><th>N_ROLLO</th><th>KILOS</th><th>COLADA</th><th>CONS.</th><th>SELLO</th><th>N_REMISION</th></tr></thead>'
+    +'<tbody id="gmp-body-ent"></tbody>'
+    +'</table></div></div>'
+    // ── PANEL SALIDAS ──
+    +'<div id="gmp-panel-sal" style="flex:1;display:flex;flex-direction:column;overflow:hidden;display:none">'
+    +'<div style="padding:8px 14px 6px;background:white;border-bottom:1px solid #f1f5f9;flex-shrink:0">'
+    +'<div class="row g-2 align-items-end">'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Fecha Salida General</label>'
+    +'<input type="date" id="gmp-fecha-sal" class="form-control form-control-sm" value="'+ayerStr+'"></div>'
+    +'</div></div>'
+    +'<div style="flex:1;overflow:auto;padding:0 14px 0">'
+    +'<table class="tbl-emb" id="gmp-tbl-sal">'
+    +'<thead><tr style="background:#c62828;color:white"><th>PROVEEDOR</th><th>F.ENTRADA</th><th>DIÁMETRO</th><th>ACERO</th><th>N_ROLLO</th><th>KILOS</th><th>COLADA</th><th>SELLO</th><th>ACCIÓN</th></tr></thead>'
+    +'<tbody id="gmp-body-sal"></tbody>'
+    +'</table></div></div>'
+    // ── PANEL CONSULTAS ──
+    +'<div id="gmp-panel-con" style="flex:1;display:flex;flex-direction:column;overflow:hidden;display:none">'
+    +'<div style="padding:8px 14px 6px;background:white;border-bottom:1px solid #f1f5f9;flex-shrink:0">'
+    +'<div class="row g-2 align-items-end">'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Tipo</label>'
+    +'<select id="gmp-con-tipo" class="form-select form-select-sm"><option value="entradas">ENTRADAS</option><option value="salidas">SALIDAS</option></select></div>'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Fecha Inicial</label>'
+    +'<input type="date" id="gmp-con-ini" class="form-control form-control-sm" value="'+hoy+'"></div>'
+    +'<div class="col-auto"><label style="font-size:.7rem;font-weight:800;text-transform:uppercase">Fecha Final</label>'
+    +'<input type="date" id="gmp-con-fin" class="form-control form-control-sm" value="'+hoy+'"></div>'
+    +'<div class="col-auto"><button class="btn btn-primary btn-sm fw-bold" onclick="_gmpEjecutarConsulta()"><i class="fas fa-search me-1"></i>Consultar</button></div>'
+    +'</div></div>'
+    +'<div style="flex:1;overflow:auto;padding:0 14px 0">'
+    +'<table class="tbl-emb" id="gmp-tbl-con"><thead id="gmp-head-con"></thead><tbody id="gmp-body-con"></tbody><tfoot id="gmp-foot-con"></tfoot></table>'
+    +'</div></div>'
+    // ── MODALES ──
+    +'</div>';
+  document.getElementById('content-area').innerHTML = html;
+  // Set current month in mes selector
+  try { document.getElementById('gmp-mes-reporte').value = new Date().getMonth(); } catch(e){}
+  // Build modals in body
+  _gmpBuildModals();
+  _gmpRenderEntradas();
+}
+
+function _gmpBuildModals() {
+  // Inicializar instancias Bootstrap de modales estáticos (igual que Existencia)
+  if(!window._gmpModalSalidaInd)    window._gmpModalSalidaInd    = new bootstrap.Modal(document.getElementById('gmpModalSalidaInd'));
+  if(!window._gmpModalSalidaConfirm) window._gmpModalSalidaConfirm = new bootstrap.Modal(document.getElementById('gmpModalSalidaConfirm'));
+  if(!window._gmpModalFiltro)        window._gmpModalFiltro        = new bootstrap.Modal(document.getElementById('gmpModalFiltro'));
+  if(!window._gmpModalEditCon)       window._gmpModalEditCon       = new bootstrap.Modal(document.getElementById('gmpModalEditCon'));
+}
+function _gmpSwitchTab(tab) {
+  _gmp_tabActual = tab;
+  var tabs = ['entradas','salidas','consultas'];
+  tabs.forEach(function(t){
+    var btn = document.getElementById('gmp-tab-'+t.substring(0,3));
+    var panel = document.getElementById('gmp-panel-'+t.substring(0,3));
+    var isActive = t === tab;
+    if(btn){ btn.classList.toggle('active',isActive); btn.style.color=isActive?'#1565c0':'#64748b'; btn.style.borderBottom=isActive?'3px solid #1565c0':''; }
+    if(panel) panel.style.display = isActive ? 'flex' : 'none';
+  });
+  var titleMap = {entradas:'ENTRADAS MATERIA PRIMA', salidas:'SALIDAS MATERIA PRIMA', consultas:'CONSULTAS'};
+  var lbl=document.getElementById('gmp-title-lbl'); if(lbl) lbl.innerText='GESTIÓN MATERIA PRIMA — '+titleMap[tab];
+  _gmpCheckButtons();
+}
+
+function _gmpFiltrarTablas() {
+  var val = (document.getElementById('gmp-search')||{value:''}).value.toLowerCase();
+  var bodyId = _gmp_tabActual==='entradas'?'gmp-body-ent':_gmp_tabActual==='salidas'?'gmp-body-sal':'gmp-body-con';
+  var body = document.getElementById(bodyId);
+  if(!body) return;
+  Array.from(body.querySelectorAll('tr')).forEach(function(tr){ tr.style.display=tr.innerText.toLowerCase().includes(val)?'':'none'; });
+}
+
+// ── ENTRADAS ──
+function _gmpHandleExcel(input) {
+  var file = input.files[0];
+  if(!file) return;
+  showLoader('Procesando Excel...');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var data = new Uint8Array(e.target.result);
+    var wb = XLSX.read(data, {type:'array'});
+    var sheet = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(sheet, {header:"A"});
+    _gmp_entradasData = [];
+    var counter = 1;
+    rows.forEach(function(r){
+      if(!r.A || isNaN(r.A) || !r.AH || isNaN(r.AH)) return;
+      var diamRaw = String(r.Z||"");
+      var diametro = diamRaw.replace(/[^\d.]/g,'')||"0";
+      var aceroRaw = String(r.T||"");
+      var acero = aceroRaw.replace(/Alambron\s*/gi,'').trim();
+      var serieRaw = String(r.S||"").trim();
+      var nRollo = "";
+      if(serieRaw.length>=2){ var u2=serieRaw.slice(-2); nRollo=/[a-zA-Z]/.test(u2[0])?u2[1]:u2; } else nRollo=serieRaw;
+      _gmp_entradasData.push({
+        proveedor:document.getElementById('gmp-proveedor').value,
+        fecha:document.getElementById('gmp-fecha-ent').value,
+        diametro:diametro, acero:acero, n_rollo:nRollo,
+        kilos:Math.round((parseFloat(r.AH)||0)*1000),
+        colada:r.AO||'', consecutivo:counter++, sello:'', n_remision:r.A||''
+      });
+    });
+    _gmpRenderEntradas();
+    hideLoader();
+    input.value="";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function _gmpAgregarFilaManual() {
+  if(_gmp_entradasData.length>0){
+    var u=_gmp_entradasData[_gmp_entradasData.length-1];
+    if(!u.n_remision||!u.diametro||!u.acero||!u.kilos){Swal.fire('Atención','Completa los datos antes de agregar otro renglón.','warning');return;}
+  }
+  var d='',a='',k='',c='',rem='',nR=1;
+  if(_gmp_entradasData.length>0){
+    var ult=_gmp_entradasData[_gmp_entradasData.length-1];
+    d=ult.diametro;a=ult.acero;k=ult.kilos;c=ult.colada;rem=ult.n_remision;
+    if(ult.esManual) nR=(parseInt(ult.n_rollo)||0)+1;
+  }
+  _gmp_entradasData.push({proveedor:document.getElementById('gmp-proveedor').value,fecha:document.getElementById('gmp-fecha-ent').value,
+    diametro:d,acero:a,n_rollo:String(nR),kilos:k,colada:c,consecutivo:_gmp_entradasData.length+1,sello:'',n_remision:rem,esManual:true});
+  _gmpRenderEntradas();
+}
+
+function _gmpUpdateGlobal() {
+  var p=document.getElementById('gmp-proveedor').value;
+  var f=document.getElementById('gmp-fecha-ent').value;
+  document.querySelectorAll('.gmp-td-prov').forEach(function(td){td.innerText=p;});
+  document.querySelectorAll('.gmp-td-fecha').forEach(function(td){td.innerText=f;});
+  _gmp_entradasData.forEach(function(r){r.proveedor=p;r.fecha=f;});
+}
+
+function _gmpSyncInput(idx,field,el) {
+  _gmp_entradasData[idx][field]=el.value;
+  _gmpCheckButtons();
+}
+
+function _gmpEliminarFila(idx) {
+  Swal.fire({
+    icon: 'warning',
+    title: '¿Eliminar registro?',
+    text: 'Se quitará este registro de la lista.',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#c62828'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    _gmp_entradasData.splice(idx,1);
+    _gmpRenderEntradas();
+  });
+}
+
+function _gmpRenderEntradas() {
+  var body=document.getElementById('gmp-body-ent');
+  if(!body) return;
+  body.innerHTML=_gmp_entradasData.map(function(r,i){
+    var ed=r.esManual?'style="background:#e3f2fd;border:1px solid #90caf9"':'';
+    var ro=r.esManual?'':'readonly';
+    return '<tr>'
+      +'<td class="gmp-td-prov">'+r.proveedor+'</td>'
+      +'<td class="gmp-td-fecha">'+r.fecha.split("-").reverse().join("/")+'</td>'
+      +'<td><input type="text" class="td-input-gmp" value="'+r.diametro+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'diametro\',this)"></td>'
+      +'<td><input type="text" class="td-input-gmp" value="'+r.acero+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'acero\',this)"></td>'
+      +'<td><input type="text" class="td-input-gmp" value="'+r.n_rollo+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'n_rollo\',this)"></td>'
+      +'<td><input type="number" class="td-input-gmp" value="'+r.kilos+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'kilos\',this)"></td>'
+      +'<td><input type="text" class="td-input-gmp" value="'+r.colada+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'colada\',this)"></td>'
+      +'<td>'+r.consecutivo+'</td>'
+      +'<td><input type="text" class="td-input-gmp sello-gmp" value="'+r.sello+'" oninput="_gmpSyncInput('+i+',\'sello\',this)"></td>'
+      +'<td style="display:flex;align-items:center;gap:6px">'
+      +'<input type="text" class="td-input-gmp" value="'+r.n_remision+'" '+ro+' '+ed+' oninput="_gmpSyncInput('+i+',\'n_remision\',this)">'
+      +'<i class="fas fa-times-circle" style="color:#dc2626;cursor:pointer;font-size:1rem" onclick="_gmpEliminarFila('+i+')" title="Eliminar"></i>'
+      +'</td></tr>';
+  }).join('');
+  if(!_gmp_entradasData.length) body.innerHTML='<tr><td colspan="10" class="text-center text-muted py-4">Carga un Excel o agrega filas manuales</td></tr>';
+  _gmpCheckButtons();
+}
+
+function _gmpCheckButtons() {
+  var showSync = false, showSal = false;
+  if(_gmp_tabActual==='entradas' && _gmp_entradasData.length>0) {
+    var incomplete = _gmp_entradasData.some(function(r){
+      var base=!r.n_rollo||!r.sello;
+      if(r.esManual) return base||!r.diametro||!r.acero||!r.kilos||!r.n_remision;
+      return base;
+    });
+    showSync = !incomplete;
+  }
+  if(_gmp_tabActual==='salidas') {
+    var cnt=Object.keys(_gmp_cambiosSalidas).length;
+    showSal=cnt>0;
+    var cntEl=document.getElementById('gmp-cnt-salidas'); if(cntEl) cntEl.innerText=cnt;
+  }
+  var bs=document.getElementById('gmp-btn-sync'); if(bs) bs.style.display=showSync?'':'none';
+  var bsal=document.getElementById('gmp-btn-salidas'); if(bsal) bsal.style.display=showSal?'':'none';
+}
+
+function _gmpConfirmarSync() {
+  var sellos=_gmp_entradasData.map(function(r){return String(r.sello).trim().toUpperCase();});
+  var dups=sellos.filter(function(s,i){return sellos.indexOf(s)!==i&&s!=="";});
+  if(dups.length>0){Swal.fire('Error','Sellos repetidos internamente: '+[...new Set(dups)].join(', '),'error');return;}
+  showLoader('Verificando sellos en BD...');
+  google.script.run
+    .withSuccessHandler(function(dupsBD){
+      if(dupsBD.length>0){hideLoader();Swal.fire('Bloqueado','Los siguientes sellos YA EXISTEN en BD:\n'+dupsBD.join('\n'),'error');return;}
+      hideLoader();
+      showLoader('Guardando en Sheets...');
+      google.script.run
+        .withSuccessHandler(function(){hideLoader();_gmpMostrarExito();})
+        .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+        .guardarEntradasMP(_gmp_entradasData);
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .verificarSellosDuplicados(sellos);
+}
+
+// ── SALIDAS ──
+function _gmpRenderSalidas() {
+  var body=document.getElementById('gmp-body-sal');
+  if(!body) return;
+  body.innerHTML=_gmp_salidasMaster.map(function(r){
+    var enCambio=_gmp_cambiosSalidas[r.id];
+    return '<tr style="'+(enCambio?'background:#fce4ec':'')+'">'+
+      '<td>'+r.proveedor+'</td><td>'+r.fecha+'</td><td>'+r.diametro+'</td><td>'+(r.aceroFull||r.acero||'')+'</td>'+
+      '<td>'+r.n_rollo+'</td><td>'+(r.kilos||0).toLocaleString()+'</td><td>'+r.colada+'</td><td>'+r.sello+'</td>'+
+      '<td>'+(enCambio
+        ?'<button class="btn btn-warning btn-sm" onclick="_gmpDeshacerSalida('+r.id+')">Deshacer</button>'
+        :'<button class="btn btn-primary btn-sm" onclick="_gmpAbrirModalSalida('+r.id+')">Seleccionar</button>')
+      +'</td></tr>';
+  }).join('');
+  if(!_gmp_salidasMaster.length) body.innerHTML='<tr><td colspan="9" class="text-center text-muted py-4">Sin registros activos</td></tr>';
+  _gmpCheckButtons();
+}
+
+function _gmpAbrirModalSalida(id) {
+  var item=_gmp_salidasMaster.find(function(i){return i.id==id;});
+  if(!item) return;
+  document.getElementById('gmpSalIndTitle').innerHTML='Sello <b>'+item.sello+'</b> — Ø'+item.diametro+' '+item.aceroFull;
+  document.getElementById('gmp-sal-ind-id').value=id;
+  document.getElementById('gmp-sal-ind-fecha').value=document.getElementById('gmp-fecha-sal').value;
+  document.getElementById('gmp-sal-ind-comm').value='';
+  window._gmpModalSalidaInd.show();
+}
+
+function _gmpRegistrarCambioSalida() {
+  var id=document.getElementById('gmp-sal-ind-id').value;
+  var item=_gmp_salidasMaster.find(function(i){return i.id==id;});
+  if(!item) return;
+  _gmp_cambiosSalidas[id]={id:id,sello:item.sello,fechaSalida:document.getElementById('gmp-sal-ind-fecha').value,comentarios:document.getElementById('gmp-sal-ind-comm').value};
+  window._gmpModalSalidaInd.hide();
+  _gmpRenderSalidas();
+}
+
+function _gmpDeshacerSalida(id) {
+  delete _gmp_cambiosSalidas[id];
+  _gmpRenderSalidas();
+}
+
+function _gmpModalSalidasConfirm() {
+  var list=document.getElementById('gmp-lista-confirm-sal');
+  list.innerHTML=Object.values(_gmp_cambiosSalidas).map(function(c){
+    return '<div class="list-group-item d-flex justify-content-between align-items-center">'
+      +'<span>Sello: <b>'+c.sello+'</b> — Salida: '+c.fechaSalida+'</span>'
+      +'<button class="btn btn-outline-danger btn-sm" onclick="_gmpDeshacerSalida('+c.id+');_gmpModalSalidasConfirm()">Quitar</button></div>';
+  }).join('');
+  window._gmpModalSalidaConfirm.show();
+}
+
+function _gmpEjecutarSalidasFinal() {
+  showLoader('Procesando salidas...');
+  google.script.run
+    .withSuccessHandler(function(){hideLoader();window._gmpModalSalidaConfirm.hide();_gmpMostrarExito();})
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .procesarSalidasMP(Object.values(_gmp_cambiosSalidas));
+}
+
+// ── EDITAR REGISTRO EN CONSULTAS ──
+function _gmpAbrirEditarCon(id) {
+  var r = _gmp_dataConMaster.find(function(i){ return String(i.id) === String(id); });
+  if(!r) return;
+  document.getElementById('gmpEditConId').value = id;
+  document.getElementById('gmpEditConDiam').value  = r.diametro;
+  document.getElementById('gmpEditConAcero').value = r.acero;
+  document.getElementById('gmpEditConRollo').value = r.n_rollo;
+  document.getElementById('gmpEditConKilos').value = r.kilos;
+  document.getElementById('gmpEditConColada').value= r.colada;
+  // Guardamos los valores originales para comparar qué cambió
+  document.getElementById('gmpEditConId').dataset.orig = JSON.stringify({
+    diametro: String(r.diametro), acero: String(r.acero),
+    n_rollo: String(r.n_rollo), kilos: String(r.kilos), colada: String(r.colada)
+  });
+  window._gmpModalEditCon.show();
+}
+
+function _gmpGuardarEditCon() {
+  var id   = document.getElementById('gmpEditConId').value;
+  var orig = JSON.parse(document.getElementById('gmpEditConId').dataset.orig || '{}');
+  var nuevo = {
+    diametro: document.getElementById('gmpEditConDiam').value.trim(),
+    acero:    document.getElementById('gmpEditConAcero').value.trim().toUpperCase(),
+    n_rollo:  document.getElementById('gmpEditConRollo').value.trim(),
+    kilos:    document.getElementById('gmpEditConKilos').value.trim(),
+    colada:   document.getElementById('gmpEditConColada').value.trim().toUpperCase()
+  };
+  if(!nuevo.diametro||!nuevo.acero||!nuevo.n_rollo||!nuevo.kilos||!nuevo.colada){
+    Swal.fire('Atención','Todos los campos son obligatorios.','warning'); return;
+  }
+  // Detectar exactamente qué cambió
+  var cambios = [];
+  if(nuevo.diametro !== orig.diametro) cambios.push('Cambió DIAMETRO de '+orig.diametro+' a '+nuevo.diametro+' mm');
+  if(nuevo.acero    !== orig.acero)    cambios.push('Cambió ACERO de '+orig.acero+' a '+nuevo.acero);
+  if(nuevo.n_rollo  !== orig.n_rollo)  cambios.push('Cambió ROLLO de '+orig.n_rollo+' a '+nuevo.n_rollo);
+  if(nuevo.kilos    !== orig.kilos)    cambios.push('Cambió KILOS de '+orig.kilos+' a '+nuevo.kilos);
+  if(nuevo.colada   !== orig.colada)   cambios.push('Cambió COLADA de '+orig.colada+' a '+nuevo.colada);
+  if(!cambios.length){ Swal.fire('Info','No hay cambios para guardar.','info'); return; }
+  showLoader('Guardando cambios...');
+  google.script.run
+    .withSuccessHandler(function(){
+      hideLoader();
+      window._gmpModalEditCon.hide();
+      // Actualizar dato en memoria local para que la tabla se refresque
+      var r = _gmp_dataConMaster.find(function(i){ return String(i.id) === String(id); });
+      if(r){ r.diametro=nuevo.diametro; r.acero=nuevo.acero; r.n_rollo=nuevo.n_rollo; r.kilos=parseFloat(nuevo.kilos)||0; r.colada=nuevo.colada; }
+      _gmpRenderConsultas();
+      Swal.fire('¡Guardado!','Los cambios se registraron correctamente.','success');
+    })
+    .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error',''+e,'error'); })
+    .editarEntradaMP(id, nuevo, cambios, currentUser.nombre);
+}
+
+// ── CONSULTAS ──
+function _gmpEjecutarConsulta() {
+  var tipo=document.getElementById('gmp-con-tipo').value;
+  var ini=document.getElementById('gmp-con-ini').value;
+  var fin=document.getElementById('gmp-con-fin').value;
+  if(!ini||!fin){Swal.fire('Atención','Selecciona ambas fechas.','warning');return;}
+  showLoader('Buscando registros...');
+  google.script.run
+    .withSuccessHandler(function(data){
+      hideLoader();
+      if(!data||!data.length){_gmp_dataConMaster=[];_gmpResetFiltrosCon();_gmpRenderConsultas();Swal.fire('Info','Sin registros en ese rango.','info');return;}
+      _gmp_dataConMaster=data.sort(function(a,b){
+        var fA=(tipo==='entradas'?a.fecha:a.fecha_salida)||"01/01/2000";
+        var fB=(tipo==='entradas'?b.fecha:b.fecha_salida)||"01/01/2000";
+        return _gmpParseFecha(fA)-_gmpParseFecha(fB);
+      });
+      _gmpResetFiltrosCon();
+      _gmpRenderConsultas();
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .getConsultasMP(tipo,ini,fin);
+}
+
+function _gmpParseFecha(s){if(!s)return new Date(0);var p=s.split("/");return new Date(p[2],p[1]-1,p[0]);}
+
+function _gmpResetFiltrosCon(){
+  _gmp_filtrosCon={};
+  if(_gmp_dataConMaster.length>0) Object.keys(_gmp_dataConMaster[0]).forEach(function(k){
+    _gmp_filtrosCon[k]=[...new Set(_gmp_dataConMaster.map(function(i){return String(i[k]);}))];
+  });
+}
+
+function _gmpRenderConsultas(){
+  var dataFilt=_gmp_dataConMaster.filter(function(item){
+    return Object.keys(_gmp_filtrosCon).every(function(k){return _gmp_filtrosCon[k].includes(String(item[k]));});
+  });
+  var cols=[
+    {k:'proveedor',l:'PROVEEDOR'},{k:'fecha',l:'FECHA'},{k:'diametro',l:'DIAM'},{k:'acero',l:'ACERO'},
+    {k:'n_rollo',l:'ROLLO'},{k:'kilos',l:'KILOS'},{k:'colada',l:'COLADA'},{k:'sello',l:'SELLO'},
+    {k:'n_remision',l:'REMISION'},{k:'consecutivo',l:'CONS'},{k:'estado',l:'ESTADO'},
+    {k:'fecha_salida',l:'F_SALIDA'},{k:'kilos_salida',l:'K_SALIDA'},{k:'comentarios',l:'COMENTARIOS'}
+  ];
+  var head=document.getElementById('gmp-head-con');
+  var body=document.getElementById('gmp-body-con');
+  var foot=document.getElementById('gmp-foot-con');
+  if(!head||!body) return;
+  head.innerHTML='<tr>'+cols.map(function(c){
+    return '<th onclick="_gmpAbrirFiltroCon(this.dataset.col)" data-col="'+c.k+'" style="cursor:pointer;white-space:nowrap">'+c.l+' <i class="fas fa-filter" style="font-size:.6rem;opacity:.7"></i></th>';
+  }).join('')+'<th style="white-space:nowrap;background:#fff8e1">✏️ EDITAR</th></tr>';
+  if(!dataFilt.length){
+    body.innerHTML='<tr><td colspan="15" class="text-center text-muted py-4">Sin resultados</td></tr>';
+    if(foot) foot.innerHTML='';
+    return;
+  }
+  body.innerHTML=dataFilt.map(function(r){
+    return '<tr>'
+      +'<td>'+r.proveedor+'</td><td>'+r.fecha+'</td><td>'+r.diametro+'</td><td>'+r.acero+'</td>'
+      +'<td>'+r.n_rollo+'</td><td style="font-weight:700">'+r.kilos+'</td><td>'+r.colada+'</td><td>'+r.sello+'</td>'
+      +'<td>'+r.n_remision+'</td><td>'+r.consecutivo+'</td>'
+      +'<td><button class="btn btn-sm '+(r.estado==='ACTIVO'?'btn-success':'btn-danger')+'" onclick="_gmpSwitchEstadoCon(this.dataset.rid,this.dataset.est,this.dataset.kg)" data-rid="'+r.id+'" data-est="'+r.estado+'" data-kg="'+r.kilos+'">'+(r.estado)+'</button></td>'
+      +'<td>'+(r.fecha_salida||'-')+'</td><td>'+(r.kilos_salida||'-')+'</td><td>'+(r.comentarios||'-')+'</td>'
+      +'<td style="text-align:center"><button class="btn btn-warning btn-sm fw-bold px-2" onclick="_gmpAbrirEditarCon(\''+r.id+'\')" title="Editar registro"><i class="fas fa-pencil-alt"></i></button></td>'
+      +'</tr>';
+  }).join('');
+  // ── TOTALES ────────────────────────────────────
+  var totalReg = dataFilt.length;
+  var totalKg  = dataFilt.reduce(function(s,r){ return s + (Number(r.kilos)||0); }, 0);
+  if(foot) {
+    foot.innerHTML = '<tr style="background:#0f172a;color:white;font-weight:800;font-size:.8rem">'
+      +'<td colspan="5" style="text-align:right;padding:6px 10px">TOTAL REGISTROS: '+totalReg+'</td>'
+      +'<td style="color:#fbbf24;padding:6px 10px">'+totalKg.toLocaleString('es-MX')+'</td>'
+      +'<td colspan="8" style="padding:6px 10px">Σ KILOS: '+totalKg.toLocaleString('es-MX')+' kg</td>'
+      +'</tr>';
+  }
+}
+function _gmpAbrirFiltroCon(col) {
+  _gmp_colFiltroActual = col;
+  var dataSub = _gmp_dataConMaster.filter(function(i) {
+    return Object.keys(_gmp_filtrosCon).every(function(k) { return k===col || _gmp_filtrosCon[k].includes(String(i[k])); });
+  });
+  var opciones = [...new Set(dataSub.map(function(i){ return String(i[col]); }))].sort(function(a,b){ return a.localeCompare(b,undefined,{numeric:true}); });
+  var sel = _gmp_filtrosCon[col] || opciones;
+  document.getElementById('gmpTitFiltro').innerText = 'Filtrar ' + col.toUpperCase();
+  document.getElementById('gmpBusFiltro').value = '';
+  document.getElementById('gmpListaChecks').innerHTML = opciones.map(function(opt) {
+    return '<div class="form-check">'      +'<input class="form-check-input gmp-chk-con" type="checkbox" value="'+opt+'"'+(sel.includes(opt)?' checked':'')+'>'      +'<label class="form-check-label" style="font-size:.82rem">'+opt+'</label>'      +'</div>';
+  }).join('');
+  window._gmpModalFiltro.show();
+}
+function _gmpAplicarFiltroCon() {
+  _gmp_filtrosCon[_gmp_colFiltroActual] = Array.from(document.querySelectorAll('.gmp-chk-con:checked')).map(function(cb){ return cb.value; });
+  if(!_gmp_filtrosCon[_gmp_colFiltroActual].length) delete _gmp_filtrosCon[_gmp_colFiltroActual];
+  _gmpRenderConsultas();
+  window._gmpModalFiltro.hide();
+}
+function _gmpFiltrarChecksCon() {
+  var val = (document.getElementById('gmpBusFiltro').value||'').toLowerCase();
+  document.querySelectorAll('#gmpListaChecks .form-check').forEach(function(el) {
+    el.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+  });
+}
+function _gmpToggleTodosCon(v){
+  document.querySelectorAll('.gmp-chk-con').forEach(function(cb){if(cb.parentElement.style.display!=='none')cb.checked=v;});
+}
+
+function _gmpSwitchEstadoCon(id,estadoActual,kilos){
+  if(estadoActual==='BAJA'){
+    Swal.fire({
+      icon: 'question',
+      title: '¿Cambiar a ACTIVO?',
+      text: 'Se borrarán los datos de salida registrados.',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, cambiar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#1a237e'
+    }).then(function(result){
+      if(result.isConfirmed) _gmpProcesarCambioEstado(id,'ACTIVO',{});
+    });
+  } else {
+    var fechaDefault = document.getElementById('gmp-con-fin').value.split('-').reverse().join('/');
+    Swal.fire({
+      title: 'Dar de baja registro',
+      html:
+        '<label style="display:block;text-align:left;margin-bottom:4px;font-size:13px">Fecha de salida (DD/MM/YYYY)</label>' +
+        '<input id="swal-fecha-sal" class="swal2-input" placeholder="DD/MM/YYYY" value="' + fechaDefault + '">' +
+        '<label style="display:block;text-align:left;margin-top:10px;margin-bottom:4px;font-size:13px">Comentarios (opcional)</label>' +
+        '<input id="swal-comentarios" class="swal2-input" placeholder="Comentarios...">',
+      showCancelButton: true,
+      confirmButtonText: 'Guardar baja',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#c62828',
+      preConfirm: function() {
+        var fSal = document.getElementById('swal-fecha-sal').value.trim();
+        if (!fSal) { Swal.showValidationMessage('La fecha de salida es obligatoria'); return false; }
+        return { fecha: fSal, comentarios: document.getElementById('swal-comentarios').value.trim() };
+      }
+    }).then(function(result){
+      if(result.isConfirmed){
+        _gmpProcesarCambioEstado(id,'BAJA',{fecha:result.value.fecha, kilos:kilos, comentarios:result.value.comentarios});
+      }
+    });
+  }
+}
+function _gmpProcesarCambioEstado(id,nuevo,info){
+  showLoader('Actualizando estado...');
+  google.script.run
+    .withSuccessHandler(function(res){if(res)_gmpEjecutarConsulta();else{hideLoader();Swal.fire('Error','Error al actualizar','error');}})
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .actualizarEstadoMP(id,nuevo,info,currentUser.nombre);
+}
+
+// ── REPORTE EXCEL ──
+async function _gmpExportarReporte() {
+  showLoader('CONFIGURANDO FORMATO AVANZADO Y COLORES...');
+  var mesIdx = parseInt(document.getElementById('gmp-mes-reporte').value);
+  var anioActual = new Date().getFullYear();
+  var mesesNombres = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  google.script.run
+    .withSuccessHandler(async function(data) {
+      if (!data || data.length === 0) {
+        hideLoader();
+        Swal.fire('Info', 'Sin datos para ese mes.', 'info');
+        return;
+      }
+      if (typeof ExcelJS === 'undefined') {
+        hideLoader();
+        Swal.fire('Error', 'Librería ExcelJS no disponible.', 'error');
+        return;
+      }
+
+      var workbook = new ExcelJS.Workbook();
+      var worksheet = workbook.addWorksheet('Inventario');
+      var diasMes = new Date(anioActual, mesIdx + 1, 0).getDate();
+
+      // 1. ANCHOS DE COLUMNA
+      worksheet.getColumn(1).width = 25; // Proveedor
+      worksheet.getColumn(2).width = 10; // Diámetro
+      worksheet.getColumn(3).width = 12; // SAE
+
+      // 2. ENCABEZADO TÍTULO
+      worksheet.mergeCells('A1:C3');
+      var cellTitulo = worksheet.getCell('A1');
+      cellTitulo.value = "TOOL CN - INVENTARIO DE ALAMBRÓN " + mesesNombres[mesIdx].toUpperCase();
+      cellTitulo.font = { bold: true, size: 14, color: { argb: 'FF004a99' } };
+      cellTitulo.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // 3. ENCABEZADOS BASE (Proveedor, Ø, SAE) — Filas 4-6 combinadas verticalmente
+      var headersBase = [
+        { col: 1, val: "Proveedor" },
+        { col: 2, val: "Ø" },
+        { col: 3, val: "SAE" }
+      ];
+      headersBase.forEach(function(h) {
+        worksheet.mergeCells(4, h.col, 6, h.col);
+        var cell = worksheet.getCell(4, h.col);
+        cell.value = h.val;
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9ECEF' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      // 4. GENERAR COLUMNAS POR DÍA (Entradas en Verde / Salidas en Rojo)
+      var colIdx = 4;
+      for (var d = 1; d <= diasMes; d++) {
+        var diaStr = mesesNombres[mesIdx].substring(0,3) + ' - ' + (d < 10 ? '0'+d : d);
+
+        // Fila 4: Nombre del día (azul tenue)
+        worksheet.mergeCells(4, colIdx, 4, colIdx + 3);
+        var cellDia = worksheet.getCell(4, colIdx);
+        cellDia.value = diaStr;
+        cellDia.font = { bold: true };
+        cellDia.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+
+        // Fila 5: "Entradas" (verde) / "Salidas" (rojo)
+        worksheet.mergeCells(5, colIdx, 5, colIdx + 1);
+        var cellEnt = worksheet.getCell(5, colIdx);
+        cellEnt.value = "Entradas";
+        cellEnt.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+        cellEnt.font = { color: { argb: 'FF006100' }, bold: true };
+
+        worksheet.mergeCells(5, colIdx + 2, 5, colIdx + 3);
+        var cellSal = worksheet.getCell(5, colIdx + 2);
+        cellSal.value = "Salidas";
+        cellSal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        cellSal.font = { color: { argb: 'FF9C0006' }, bold: true };
+
+        // Fila 6: Rol. / KGS con color tenue
+        ["Rol.", "KGS", "Rol.", "KGS"].forEach(function(txt, i) {
+          var cell = worksheet.getCell(6, colIdx + i);
+          cell.value = txt;
+          cell.font = { size: 8, bold: true };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i < 2 ? 'FFE2EFDA' : 'FFFCE4EC' } };
+        });
+
+        colIdx += 4;
+      }
+
+      // 5. COLUMNAS FINALES: TOTAL MES + EXISTENCIA ACTUAL
+      var colTotalMes = colIdx;
+      var totalCols = colTotalMes + 5;
+
+      worksheet.mergeCells(4, colTotalMes, 4, colTotalMes + 3);
+      var cellTotalMesH = worksheet.getCell(4, colTotalMes);
+      cellTotalMesH.value = "TOTAL MES";
+      cellTotalMesH.font = { bold: true };
+      cellTotalMesH.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+      cellTotalMesH.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      worksheet.mergeCells(5, colTotalMes, 5, colTotalMes + 1);
+      var cellEntTotal = worksheet.getCell(5, colTotalMes);
+      cellEntTotal.value = "Entradas";
+      cellEntTotal.font = { bold: true, color: { argb: 'FF006100' } };
+      cellEntTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+
+      worksheet.mergeCells(5, colTotalMes + 2, 5, colTotalMes + 3);
+      var cellSalTotal = worksheet.getCell(5, colTotalMes + 2);
+      cellSalTotal.value = "Salidas";
+      cellSalTotal.font = { bold: true, color: { argb: 'FF9C0006' } };
+      cellSalTotal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+
+      ["Rol.", "KGS", "Rol.", "KGS"].forEach(function(txt, i) {
+        var cell = worksheet.getCell(6, colTotalMes + i);
+        cell.value = txt;
+        cell.font = { size: 8, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i < 2 ? 'FFE2EFDA' : 'FFFCE4EC' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      // Existencia Actual (amarillo)
+      worksheet.mergeCells(4, colTotalMes + 4, 6, colTotalMes + 5);
+      var cellExisH = worksheet.getCell(4, colTotalMes + 4);
+      cellExisH.value = "EXISTENCIA ACTUAL";
+      cellExisH.font = { bold: true };
+      cellExisH.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+      cellExisH.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+      // 6. PROCESAMIENTO DE DATOS
+      var grupos = {};
+      data.forEach(function(r) {
+        var prov = String(r.proveedor || "").trim();
+        var diam = String(r.diametro || "").trim();
+        var acer = String(r.acero || "").trim();
+        var est  = String(r.estado || "").trim().toUpperCase();
+        var key  = prov + '|' + diam + '|' + acer;
+
+        if (!grupos[key]) {
+          grupos[key] = { prov: prov, d: diam, a: acer, dias: {}, exR: 0, exK: 0 };
+        }
+
+        // Existencia real = todos los ACTIVO
+        if (est === "ACTIVO") {
+          grupos[key].exR += 1;
+          grupos[key].exK += parseFloat(r.kilos) || 0;
+        }
+
+        // Parsear fecha DD/MM/YYYY
+        function parsearFecha(fechaStr) {
+          if (!fechaStr) return null;
+          var p = String(fechaStr).split("/");
+          if (p.length !== 3) return null;
+          return { dia: parseInt(p[0]), mes: parseInt(p[1]) - 1, anio: parseInt(p[2]) };
+        }
+
+        // Movimientos del mes seleccionado
+        var fE = parsearFecha(r.fechaEntrada);
+        if (fE && fE.mes === mesIdx && fE.anio === anioActual) {
+          if (!grupos[key].dias[fE.dia]) grupos[key].dias[fE.dia] = { eR: 0, eK: 0, sR: 0, sK: 0 };
+          grupos[key].dias[fE.dia].eR++;
+          grupos[key].dias[fE.dia].eK += parseFloat(r.kilos) || 0;
+        }
+
+        var fS = parsearFecha(r.fechaSalida);
+        if (fS && fS.mes === mesIdx && fS.anio === anioActual && est === "BAJA") {
+          if (!grupos[key].dias[fS.dia]) grupos[key].dias[fS.dia] = { eR: 0, eK: 0, sR: 0, sK: 0 };
+          grupos[key].dias[fS.dia].sR++;
+          grupos[key].dias[fS.dia].sK += parseFloat(r.kilosSalida) || 0;
+        }
+      });
+
+      // Ordenar por diámetro y luego por acero
+      var listaOrdenada = Object.values(grupos).sort(function(a, b) {
+        var diffDiam = parseFloat(a.d) - parseFloat(b.d);
+        if (diffDiam !== 0) return diffDiam;
+        return String(a.a).localeCompare(String(b.a), undefined, { numeric: true });
+      });
+
+      // 7. LLENAR FILAS DE DATOS
+      var currentRowIdx = 7;
+      listaOrdenada.forEach(function(g) {
+        var row = worksheet.getRow(currentRowIdx);
+        row.getCell(1).value = g.prov;
+        row.getCell(2).value = parseFloat(g.d) || g.d;
+        row.getCell(3).value = g.a;
+
+        var tER = 0, tEK = 0, tSR = 0, tSK = 0;
+        var cIdx = 4;
+        for (var d = 1; d <= diasMes; d++) {
+          var info = g.dias[d] || { eR: 0, eK: 0, sR: 0, sK: 0 };
+          if (info.eR > 0) row.getCell(cIdx).value = info.eR;
+          if (info.eK > 0) row.getCell(cIdx + 1).value = info.eK;
+          if (info.sR > 0) row.getCell(cIdx + 2).value = info.sR;
+          if (info.sK > 0) row.getCell(cIdx + 3).value = info.sK;
+          tER += info.eR; tEK += info.eK; tSR += info.sR; tSK += info.sK;
+          cIdx += 4;
+        }
+        // Totales del mes y existencia real
+        row.getCell(cIdx).value     = tER;
+        row.getCell(cIdx + 1).value = tEK;
+        row.getCell(cIdx + 2).value = tSR;
+        row.getCell(cIdx + 3).value = tSK;
+        row.getCell(cIdx + 4).value = g.exR;
+        row.getCell(cIdx + 5).value = g.exK;
+
+        currentRowIdx++;
+      });
+
+      // 8. FILA DE TOTALES (fondo gris, negritas)
+      worksheet.mergeCells(currentRowIdx, 1, currentRowIdx, 3);
+      var rowTotales = worksheet.getRow(currentRowIdx);
+      var cellTituloTotales = rowTotales.getCell(1);
+      cellTituloTotales.value = "TOTALES:";
+      cellTituloTotales.font = { bold: true, size: 11 };
+      cellTituloTotales.alignment = { horizontal: 'center', vertical: 'middle' };
+      cellTituloTotales.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+
+      for (var c = 1; c <= totalCols; c++) {
+        var cell = rowTotales.getCell(c);
+        cell.font = { bold: true, size: 10 };
+        if (c >= 4) {
+          var suma = 0;
+          for (var r = 7; r < currentRowIdx; r++) {
+            suma += parseFloat(worksheet.getCell(r, c).value) || 0;
+          }
+          cell.value = suma > 0 ? suma : 0;
+          cell.numFmt = (c % 2 === 1) ? '#,##0' : '0';
+        }
+        cell.border = {
+          top: { style: 'medium' }, left: { style: 'thin' },
+          bottom: { style: 'medium' }, right: { style: 'thin' }
+        };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+
+      // 9. BORDES Y FORMATO GENERAL (filas 4 en adelante)
+      for (var row = 4; row <= currentRowIdx; row++) {
+        var wsRow = worksheet.getRow(row);
+        for (var col = 1; col <= totalCols; col++) {
+          var wsCell = wsRow.getCell(col);
+          wsCell.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (row < currentRowIdx) {
+            wsCell.border = {
+              top: { style: 'thin' }, left: { style: 'thin' },
+              bottom: { style: 'thin' }, right: { style: 'thin' }
+            };
+          }
+          // Formato de miles para columnas de KGS
+          if (col >= 4 && col % 2 === 1) {
+            wsCell.numFmt = '#,##0';
+          }
+          // Separador grueso vertical entre cada día
+          if (col >= 7 && (col - 3) % 4 === 0 && col < colTotalMes) {
+            wsCell.border = wsCell.border || {};
+            wsCell.border.right = { style: 'medium' };
+          }
+        }
+      }
+
+      // 10. GENERAR Y DESCARGAR EL ARCHIVO
+      var buffer = await workbook.xlsx.writeBuffer();
+      var blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      var url = window.URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'Reporte_Alambron_' + mesesNombres[mesIdx].toUpperCase() + '.xlsx';
+      a.click();
+      hideLoader();
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      Swal.fire('Error', '' + e, 'error');
+    })
+    .getDatosReporteMensual(mesIdx, anioActual);
+}
+
+function _gmpMostrarExito(){
+  var m=document.getElementById('gmp-modal-exito');
+  if(m) m.style.display='flex';
+}
+function _gmpResetYRecarga(){
+  var m=document.getElementById('gmp-modal-exito');
+  if(m) m.style.display='none';
+  _gmp_entradasData=[];_gmp_cambiosSalidas={};
+  _gmpRenderEntradas();
+  _gmpCargarExistenciaSalidas();
+  _gmpSwitchTab('entradas');
+}
+
+// ══════════════════════════════════════════════════════════
+//  CIRCULANTE — Captura (vista separada)
+// ══════════════════════════════════════════════════════════
+var _cir_catalogo = [], _cir_dbRaw = [], _cir_filteredData = [], _cir_currentMov = '';
+var _cir_activeFilters = {}, _cir_colsToShow = [1,2,3,4,5,6,7,8,9,10,11,12,13,16,17,18];

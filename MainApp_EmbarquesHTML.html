@@ -648,6 +648,7 @@ function abrirTablerMetricas() {
 // ══════════════════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════════════════
+// ════════════════════════ MÓDULOS — rebuild_main.js ════════════════════════ //
 function loadDashboardEmbarques() {
   showLoader('Cargando dashboard...');
   var mes = dashMes.getMonth()+1, anio = dashMes.getFullYear();
@@ -1230,7 +1231,6 @@ function _despImprimirFinal() {
 // ══════════════════════════════════════════════════════════
 var _env_catalogo={}, _env_datosEditor=[], _env_datosOrig=[], _env_cambios=new Set(), _env_filtros={};
 var _env_datosImport=[], _env_rawReporte=[], _env_colFiltro='', _env_rowEditCode=null, _env_tabActual='editor';
-
 function loadEnvios() {
   _env_catalogo = {};
   _env_tabActual = 'editor';
@@ -2728,7 +2728,6 @@ async function _exportExistExcel() {
 var _gmp_entradasData = [], _gmp_salidasMaster = [], _gmp_cambiosSalidas = {};
 var _gmp_dataConMaster = [], _gmp_filtrosCon = {}, _gmp_colFiltroActual = '';
 var _gmp_tabActual = 'entradas';
-
 function loadGestionMP() {
   showLoader('Cargando Gestión MP...');
   google.script.run
@@ -3571,7 +3570,6 @@ function _gmpResetYRecarga(){
 // ══════════════════════════════════════════════════════════
 var _cir_catalogo = [], _cir_dbRaw = [], _cir_filteredData = [], _cir_currentMov = '';
 var _cir_activeFilters = {}, _cir_colsToShow = [1,2,3,4,5,6,7,8,9,10,11,12,13,16,17,18];
-
 function loadCirculante() {
   showLoader('Cargando captura circulante...');
   google.script.run
@@ -3654,7 +3652,6 @@ function _cirRenderCaptura() {
 // ══════════════════════════════════════════════════════════
 var _cirCon_dbRaw = [], _cirCon_filtered = [], _cirCon_activeFilters = {};
 var _cirCon_colsToShow = [1,2,3,4,5,6,7,8,9,10,11,12,13,16,17,18];
-
 function loadCirculanteConsulta() {
   showLoader('Cargando historial...');
   // Siempre recarga para tener datos frescos

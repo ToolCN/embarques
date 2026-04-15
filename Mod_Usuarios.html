@@ -1,0 +1,86 @@
+function loadUsuarios() {
+  if(!currentUser || (!currentUser.esAdmin && !currentUser.permisos.includes('E_Users'))) {
+    document.getElementById('content-area').innerHTML='<div class="alert alert-danger m-4">Acceso denegado</div>'; return;
+  }
+  showLoader('Cargando usuarios...');
+  google.script.run
+    .withSuccessHandler(function(u){ hideLoader(); renderUsuarios(u||[]); })
+    .withFailureHandler(function(){ hideLoader(); })
+    .getUsuariosAdmin();
+}
+function renderUsuarios(users) {
+  window._embUsers = users;
+  document.getElementById('content-area').innerHTML =
+    '<div class="card-pro bg-white p-4">'
+    +'<div class="d-flex justify-content-between align-items-center mb-4">'
+    +'<h5 class="fw-bold m-0" style="color:var(--primary)"><i class="fas fa-users-cog me-2"></i>Usuarios — Embarques</h5>'
+    +'</div>'
+    +'<p class="text-muted small mb-3"><i class="fas fa-info-circle me-1"></i>Solo se muestran y editan permisos <strong>E_*</strong>. Los demás permisos de otras apps se conservan intactos al guardar.</p>'
+    +'<div class="table-responsive"><table class="table table-hover align-middle">'
+    +'<thead class="table-light"><tr><th>Nombre</th><th>Permisos Embarques (E_...)</th><th>Acciones</th></tr></thead>'
+    +'<tbody>'+users.map(function(u,i){
+      var perms = (u.permisos||'').split(',').map(function(p){return p.trim();}).filter(function(p){return p.startsWith('E_');});
+      return '<tr><td class="fw-bold">'+u.nombre+'</td>'
+        +'<td>'+perms.map(function(p){ return '<span class="perm-badge">'+p+'</span>'; }).join('')+'</td>'
+        +'<td><button class="btn btn-sm btn-outline-primary rounded-pill" onclick=\'editarEmbUsuario('+JSON.stringify(u)+','+i+')\'>Editar</button></td></tr>';
+    }).join('')+'</tbody></table></div></div>';
+}
+function buildEmbPermsHTML(activos) {
+  return '<div class="perm-check-grid mt-2">'+PERMISOS_LIST_EMB.map(function(p){
+    var checked = activos.includes(p.perm);
+    return '<div class="perm-item"><input type="checkbox" id="eperm-'+p.perm+'" value="'+p.perm+'" '+(checked?'checked':'')+' class="form-check-input"><label for="eperm-'+p.perm+'" class="form-label small m-0">'+p.label+'</label></div>';
+  }).join('')+'</div>';
+}
+function editarEmbUsuario(u, idx) {
+  var permsActuales = (u.permisos||'').split(',').map(function(p){return p.trim();}).filter(function(p){return p.startsWith('E_');});
+  Swal.fire({
+    title:'Permisos de Embarques',
+    html:'<div class="text-start"><p class="mb-2">Usuario: <strong>'+u.nombre+'</strong></p>'+buildEmbPermsHTML(permsActuales)+'<p class="text-muted mt-3" style="font-size:.75rem"><i class="fas fa-lock me-1"></i>Los permisos que no empiezan con E_ (ej. C_*, ADMIN) se conservarán intactos.</p></div>',
+    width:'500px',showCancelButton:true,confirmButtonText:'Guardar',confirmButtonColor:'#1565c0',cancelButtonText:'Cancelar',
+    preConfirm:function(){
+      var nuevosE = PERMISOS_LIST_EMB.filter(function(x){ return document.getElementById('eperm-'+x.perm)&&document.getElementById('eperm-'+x.perm).checked; }).map(function(x){return x.perm;});
+      // Conservar permisos que NO son E_
+      var otrosPerms = (u.permisos||'').split(',').map(function(p){return p.trim();}).filter(function(p){return p&&!p.startsWith('E_');});
+      return otrosPerms.concat(nuevosE).filter(Boolean).join(',');
+    }
+  }).then(function(result){
+    if(!result.isConfirmed) return;
+    showLoader('Guardando permisos...');
+    google.script.run
+      .withSuccessHandler(function(res){
+        hideLoader();
+        Swal.fire({
+          icon:'success',title:'¡Guardado!',
+          html:'<p>Permisos de <strong>'+u.nombre+'</strong> actualizados correctamente.</p><code style="font-size:.75rem;color:#16a34a">'+res+'</code>',
+          timer:2500,showConfirmButton:false,
+          timerProgressBar:true
+        }).then(function(){ loadUsuarios(); });
+      })
+      .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error',''+e,'error'); })
+      .guardarPermisosEmbarques(u.nombre, result.value);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════
+function fmtKg(v) {
+  if(v==null||v===''||v===undefined) return '—';
+  var n=Number(v); if(isNaN(n)||n===0) return '0 kg';
+  return n.toLocaleString('es-MX',{maximumFractionDigits:1})+' kg';
+}
+function fmt0(v) {
+  if(v==null||v===''||v===undefined) return '—';
+  var n=Number(v); if(isNaN(n)) return String(v);
+  return n.toLocaleString('es-MX',{maximumFractionDigits:0});
+}
+function _modErr(nombre, fn, e) {
+  return '<div class="alert alert-warning m-4 shadow-sm border-0">'
+    +'<i class="fas fa-exclamation-triangle me-2"></i>'
+    +'<strong>Módulo '+nombre+':</strong> La función <code>'+fn+'()</code> no está disponible aún.<br>'
+    +'<span class="text-muted small">'+String(e||'')+'</span>'
+    +'</div>';
+}
+// ══════════════════════════════════════════════════════════
+//  MI USUARIO
+// ══════════════════════════════════════════════════════════

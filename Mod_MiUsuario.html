@@ -1,0 +1,620 @@
+function loadMiUsuario() {
+  if(!currentUser) return;
+  var userFull = usersDB.find(function(x){ return x.nombre === currentUser.nombre; }) || {};
+  var nombre   = userFull.nombre   || currentUser.nombre || '';
+  var password = userFull.password || '';
+  var rol      = userFull.rol      || '--';
+  var permsAll = (userFull.permisos || (currentUser.permisos||[]).join(',') || '')
+                  .split(',').map(function(p){ return p.trim(); }).filter(Boolean);
+  var permisosE = permsAll.filter(function(p){ return p.startsWith('E_'); });
+
+  var PERM_LABELS = {
+    'E_Dash':'Dashboard','E_Despachos':'Despachos','E_Envios':'Envios',
+    'E_Existencia':'Existencia Alambron','E_GestionMP':'Gestion Materia Prima',
+    'E_Circulante':'Inventario Circulante','E_Users':'Administrador de Usuarios',
+    'E_Tablero':'Tablero de Metricas'
+  };
+
+  var passDebiles = ['1234','1122','1111','0000'];
+  var passDebil   = passDebiles.indexOf(password) >= 0;
+
+  var iniciales = nombre.split(' ').slice(0,2).map(function(w){ return w[0]||''; }).join('');
+
+  var avatarHtml = '<div style="width:110px;height:110px;border-radius:50%;'
+    + 'background:linear-gradient(135deg,#1565c0,#1e88e5);display:flex;align-items:center;'
+    + 'justify-content:center;font-size:2.2rem;font-weight:900;color:white;'
+    + 'border:4px solid #1565c0;box-shadow:0 4px 20px rgba(21,101,192,.35)">'
+    + (iniciales||'U') + '</div>';
+
+  var passwordDisplay = '';
+  for(var i=0;i<password.length;i++) passwordDisplay += '*';
+
+  var passAlertHtml = passDebil
+    ? '<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:10px 14px;'
+      + 'margin-top:12px;display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:1.1rem">&#9888;</span>'
+      + '<span style="font-size:.81rem;color:#92400e;font-weight:600">Tu contrasena es debil. Actualizala abajo.</span></div>'
+    : '<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;'
+      + 'margin-top:12px;display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:1.1rem">&#10003;</span>'
+      + '<span style="font-size:.81rem;color:#166534;font-weight:600">Tu contrasena es segura.</span></div>';
+
+  var permsBadgesHtml = permisosE.length > 0
+    ? permisosE.map(function(p){
+        var label = PERM_LABELS[p] || p;
+        return '<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;'
+          + 'border-radius:20px;padding:4px 12px;font-size:.75rem;font-weight:700;'
+          + 'margin:3px 2px;display:inline-block">' + label + '</span>';
+      }).join('')
+    : '<span style="color:#94a3b8;font-size:.83rem">Sin permisos asignados</span>';
+
+  var html = ''
+    + '<div style="max-width:700px;margin:0 auto;padding:20px 10px">'
+    + '<div style="background:white;border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.07);padding:28px;margin-bottom:18px">'
+    + '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">'
+    + '<div style="flex-shrink:0">' + avatarHtml + '</div>'
+    + '<div style="flex:1;min-width:160px">'
+    + '<div style="font-size:1.4rem;font-weight:900;color:#0f172a">' + nombre + '</div>'
+    + '<div style="display:inline-block;background:#eff6ff;color:#1565c0;border-radius:20px;'
+    + 'padding:3px 13px;font-size:.78rem;font-weight:800;margin-top:6px;border:1px solid #bfdbfe">' + rol + '</div>'
+    + '</div></div></div>'
+    + '<div style="background:white;border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.07);padding:24px 28px;margin-bottom:18px">'
+    + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:14px">'
+    + '<div style="width:38px;height:38px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center">'
+    + '<i class="fas fa-key" style="color:#1565c0;font-size:1rem"></i></div>'
+    + '<div style="font-weight:800;font-size:.98rem;color:#0f172a">Contrasena actual</div></div>'
+    + '<div style="background:#f8fafc;border-radius:10px;padding:12px 16px">'
+    + '<span style="font-size:1.2rem;color:#0f172a;letter-spacing:3px">' + passwordDisplay + '</span></div>'
+    + passAlertHtml + '</div>'
+    + '<div style="background:white;border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.07);padding:24px 28px;margin-bottom:18px">'
+    + '<div style="display:flex;align-items:center;gap:11px;margin-bottom:16px">'
+    + '<div style="width:38px;height:38px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center">'
+    + '<i class="fas fa-shield-alt" style="color:#1565c0;font-size:1rem"></i></div>'
+    + '<div style="font-weight:800;font-size:.98rem;color:#0f172a">Mis Accesos</div></div>'
+    + '<div>' + permsBadgesHtml + '</div></div>'
+    + '<div style="background:white;border-radius:18px;box-shadow:0 4px 20px rgba(0,0,0,.07);padding:22px 28px">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">'
+    + '<div><div style="font-weight:800;font-size:.95rem;color:#0f172a">Seguridad de cuenta</div>'
+    + '<div style="font-size:.8rem;color:#64748b;margin-top:3px">Actualiza tu contrasena para mantener tu cuenta segura</div></div>'
+    + '<button onclick="modalCambiarPasswordEmb()" '
+    + 'style="background:linear-gradient(135deg,#1565c0,#1e88e5);color:white;border:none;'
+    + 'border-radius:12px;padding:11px 20px;font-weight:800;font-size:.87rem;cursor:pointer;'
+    + 'box-shadow:0 4px 14px rgba(21,101,192,.4)">'
+    + 'Cambiar Contrasena</button></div></div>'
+    + '</div>';
+
+  document.getElementById('content-area').innerHTML = html;
+}
+
+function modalCambiarPasswordEmb() {
+  var over = document.createElement('div');
+  over.id = 'modal-cambiar-pass-emb';
+  over.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  var div = document.createElement('div');
+  div.style.cssText = 'background:white;border-radius:20px;padding:30px;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,.35)';
+  div.innerHTML =
+      '<div style="display:flex;align-items:center;gap:13px;margin-bottom:22px">'
+    + '<div style="width:44px;height:44px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">&#128274;</div>'
+    + '<div><div style="font-weight:900;font-size:1.05rem;color:#0f172a">Cambiar Contrasena</div>'
+    + '<div style="font-size:.78rem;color:#64748b">Elige una nueva contrasena segura</div></div></div>'
+    + '<label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:5px">Nueva contrasena *</label>'
+    + '<input id="emb-new-pass" type="password" placeholder="Minimo 4 caracteres" style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;box-sizing:border-box;outline:none;margin-bottom:13px">'
+    + '<label style="font-size:.82rem;font-weight:700;color:#374151;display:block;margin-bottom:5px">Confirmar contrasena *</label>'
+    + '<input id="emb-confirm-pass" type="password" placeholder="Repite la contrasena" style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;box-sizing:border-box;outline:none;margin-bottom:13px">'
+    + '<div id="emb-pass-error" style="display:none;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:9px 13px;font-size:.8rem;font-weight:600;margin-bottom:13px"></div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button id="emb-btn-cancel" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;background:white;border-radius:10px;font-weight:700;cursor:pointer;font-size:.87rem;color:#64748b">Cancelar</button>'
+    + '<button id="emb-btn-guardar" style="flex:2;padding:11px;background:linear-gradient(135deg,#1565c0,#1e88e5);color:white;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:.87rem">Guardar</button>'
+    + '</div>';
+  over.appendChild(div);
+  document.body.appendChild(over);
+  document.getElementById('emb-btn-cancel').onclick   = cerrarModalCambiarPassEmb;
+  document.getElementById('emb-btn-guardar').onclick  = confirmarCambiarPasswordEmb;
+  document.getElementById('emb-new-pass').oninput     = embValidarPass;
+  document.getElementById('emb-confirm-pass').oninput = embValidarPass;
+  over.addEventListener('click', function(e){ if(e.target===over) cerrarModalCambiarPassEmb(); });
+  setTimeout(function(){ var el=document.getElementById('emb-new-pass'); if(el) el.focus(); }, 100);
+}
+
+function embValidarPass() {
+  var v1  = (document.getElementById('emb-new-pass').value||'').trim();
+  var v2  = (document.getElementById('emb-confirm-pass').value||'').trim();
+  var err = document.getElementById('emb-pass-error');
+  if(!err) return true;
+  if(v1.length > 0 && v1.length < 4) {
+    err.style.display='block'; err.innerText='Minimo 4 caracteres.'; return false;
+  }
+  if(v2.length > 0 && v1 !== v2) {
+    err.style.display='block'; err.innerText='Las contrasenas no coinciden.'; return false;
+  }
+  err.style.display='none'; return true;
+}
+
+function cerrarModalCambiarPassEmb() {
+  var m = document.getElementById('modal-cambiar-pass-emb');
+  if(m) m.remove();
+}
+
+function confirmarCambiarPasswordEmb() {
+  var p1  = (document.getElementById('emb-new-pass').value||'').trim();
+  var p2  = (document.getElementById('emb-confirm-pass').value||'').trim();
+  var err = document.getElementById('emb-pass-error');
+  if(!p1 || p1.length < 4) {
+    if(err){ err.style.display='block'; err.innerText='Ingresa una contrasena valida (minimo 4 caracteres).'; }
+    return;
+  }
+  if(p1 !== p2) {
+    if(err){ err.style.display='block'; err.innerText='Las contrasenas no coinciden.'; }
+    return;
+  }
+  var btn = document.getElementById('emb-btn-guardar');
+  if(btn){ btn.disabled=true; btn.innerText='Guardando...'; }
+  google.script.run
+    .withSuccessHandler(function(res) {
+      cerrarModalCambiarPassEmb();
+      if(res === 'OK') {
+        var uf = usersDB.find(function(x){ return x.nombre === currentUser.nombre; });
+        if(uf) uf.password = p1;
+        loadMiUsuario();
+        Swal.fire({icon:'success',title:'Listo!',text:'Contrasena actualizada.',timer:2500,showConfirmButton:false});
+      } else {
+        Swal.fire({icon:'error',title:'Error',text:res||'Error al cambiar contrasena',confirmButtonColor:'#ef4444'});
+      }
+    })
+    .withFailureHandler(function() {
+      cerrarModalCambiarPassEmb();
+      Swal.fire({icon:'error',title:'Error de conexion',text:'No se pudo cambiar la contrasena.',confirmButtonColor:'#ef4444'});
+    })
+    .cambiarPasswordUsuario(currentUser.nombre, p1);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MÓDULO OFFLINE — DESPACHOS
+// ══════════════════════════════════════════════════════════════════════════════
+
+var OFFLINE_KEY_LOTES      = 'despOffline_lotes';
+var OFFLINE_KEY_ORDENES    = 'despOffline_ordenes';
+var OFFLINE_KEY_PENDIENTES = 'despOffline_pendientes';
+var OFFLINE_KEY_ACTIVO     = 'despOffline_activo';
+var OFFLINE_KEY_FECHA      = 'despOffline_fecha';
+var OFFLINE_LIMITE         = 30;
+
+function _offlineActivo() {
+  return localStorage.getItem(OFFLINE_KEY_ACTIVO) === 'true';
+}
+function _offlineGetPendientes() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY_PENDIENTES) || '[]'); }
+  catch(e) { return []; }
+}
+function _offlineSetPendientes(arr) {
+  localStorage.setItem(OFFLINE_KEY_PENDIENTES, JSON.stringify(arr));
+}
+function _offlineGetLotes() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY_LOTES) || '[]'); }
+  catch(e) { return []; }
+}
+function _offlineGetOrdenes() {
+  try { return JSON.parse(localStorage.getItem(OFFLINE_KEY_ORDENES) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function _offlineRenderBarra() {
+  var pendientes = _offlineGetPendientes();
+  var n          = pendientes.length;
+  var activo     = _offlineActivo();
+  var vieja = document.getElementById('offline-barra');
+  if (vieja) vieja.remove();
+  if (!activo && n === 0) return;
+  var colorFondo = n >= OFFLINE_LIMITE ? '#dc2626' : (activo ? '#ea580c' : '#16a34a');
+  var icono      = n >= OFFLINE_LIMITE ? '&#128683;' : (activo ? '&#9888;' : '&#9989;');
+  var texto      = activo
+    ? ('MODO SIN CONEXI&#211;N &mdash; <strong>' + n + ' cambio' + (n===1?'':'s') + ' por guardar</strong> (l&#237;mite: ' + OFFLINE_LIMITE + ')')
+    : ('Sincronizando... ' + n + ' cambio' + (n===1?'':'s') + ' pendiente' + (n===1?'':'s'));
+  var btnSync = n > 0
+    ? '<button onclick="_offlineSincronizar()" class="btn btn-sm btn-light fw-bold ms-3" style="font-size:.75rem;padding:2px 10px">&#9652; Subir ahora</button>'
+    : '';
+  var barra = document.createElement('div');
+  barra.id = 'offline-barra';
+  barra.innerHTML = icono + ' ' + texto + btnSync;
+  barra.style.cssText = 'background:'+colorFondo+';color:white;padding:7px 16px;font-size:.80rem;font-weight:600;display:flex;align-items:center;gap:8px;border-radius:0 0 6px 6px;position:sticky;top:0;z-index:999;box-shadow:0 2px 6px rgba(0,0,0,.25)';
+  var contenedor = document.querySelector('.modulo-inline') || document.getElementById('content-area');
+  if (contenedor) contenedor.insertBefore(barra, contenedor.firstChild);
+}
+
+function _offlineBotonHTML() {
+  var activo     = _offlineActivo();
+  var pendientes = _offlineGetPendientes().length;
+  var fecha      = localStorage.getItem(OFFLINE_KEY_FECHA) || '';
+  if (activo) {
+    var colorBtn = pendientes >= OFFLINE_LIMITE ? '#dc2626' : '#ea580c';
+    return '<button onclick="_offlineActivar()" class="btn btn-sm fw-bold" style="background:'+colorBtn+';color:white;font-size:.75rem" title="Datos del: '+fecha+'">&#9888; Sin conexi&#243;n ['+pendientes+'/'+OFFLINE_LIMITE+']</button>';
+  }
+  return '<button onclick="_offlineActivar()" class="btn btn-sm fw-bold" style="background:#0d47a1;color:white;font-size:.75rem">&#128246; Trabajar sin conexi&#243;n</button>';
+}
+
+function _offlineActivar() {
+  if (_offlineActivo()) {
+    var pendientes = _offlineGetPendientes().length;
+    var htmlMsg = pendientes > 0
+      ? 'Tienes <strong>' + pendientes + ' despacho(s)</strong> pendientes de subir.'
+      : '¿Qué deseas hacer?';
+    Swal.fire({
+      title: 'Modo sin conexión activo',
+      html: htmlMsg,
+      icon: 'question',
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: 'Volver a modo online',
+      denyButtonText: 'Actualizar datos offline',
+      cancelButtonText: 'Cerrar',
+      confirmButtonColor: '#1a237e',
+      denyButtonColor: '#ea580c'
+    }).then(function(r) {
+      if (r.isConfirmed) {
+        if (pendientes > 0) {
+          Swal.fire({
+            title: '¿Salir sin sincronizar?',
+            html: 'Tienes <strong>' + pendientes + ' despacho(s)</strong> que se perderán si sales sin subir.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Salir de todas formas',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#c62828'
+          }).then(function(r2) {
+            if (r2.isConfirmed) {
+              localStorage.removeItem(OFFLINE_KEY_ACTIVO);
+              localStorage.removeItem(OFFLINE_KEY_LOTES);
+              localStorage.removeItem(OFFLINE_KEY_ORDENES);
+              localStorage.removeItem(OFFLINE_KEY_FECHA);
+              localStorage.removeItem(OFFLINE_KEY_PENDIENTES);
+              _desp_sourceData = [];
+              _desp_loadedDias = 0;
+              _offlineRenderBarra();
+              loadDespachos();
+            }
+          });
+        } else {
+          localStorage.removeItem(OFFLINE_KEY_ACTIVO);
+          localStorage.removeItem(OFFLINE_KEY_LOTES);
+          localStorage.removeItem(OFFLINE_KEY_ORDENES);
+          localStorage.removeItem(OFFLINE_KEY_FECHA);
+          _desp_sourceData = [];
+          _desp_loadedDias = 0;
+          _offlineRenderBarra();
+          loadDespachos();
+        }
+      } else if (r.isDenied) {
+        _offlineDescargar();
+      }
+    });
+    return;
+  }
+  _offlineDescargar();
+}
+
+function _offlineDescargar() {
+  var pendientes = _offlineGetPendientes();
+  if (pendientes.length > 0) {
+    Swal.fire({
+      title: 'Hay cambios sin guardar',
+      html: 'Tienes <strong>' + pendientes.length + ' despacho(s)</strong> pendientes de subir.<br>Primero sincroniza y luego descarga datos frescos.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Subir cambios primero', cancelButtonText: 'Descargar de todas formas'
+    }).then(function(r) {
+      if (r.isConfirmed) { _offlineSincronizar(function() { _offlineDescargarEjecutar(); }); }
+      else { _offlineDescargarEjecutar(); }
+    });
+    return;
+  }
+  _offlineDescargarEjecutar();
+}
+
+function _offlineDescargarEjecutar() {
+  showLoader('Descargando datos offline (90 días)...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      if (!res || res.error) { Swal.fire('Error', res ? res.error : 'Sin respuesta del servidor', 'error'); return; }
+      localStorage.setItem(OFFLINE_KEY_LOTES,  JSON.stringify(res.lotes   || []));
+      localStorage.setItem(OFFLINE_KEY_ORDENES, JSON.stringify(res.ordenes || {}));
+      localStorage.setItem(OFFLINE_KEY_ACTIVO,  'true');
+      localStorage.setItem(OFFLINE_KEY_FECHA,   new Date().toLocaleString('es-MX'));
+      _desp_sourceData = res.lotes || [];
+      _desp_loadedDias = 90;
+      _despActualizarCombo(90);
+      _despResetPaginacion();
+      _despRenderFuente();
+      _offlineRenderBarra();
+      Swal.fire({
+        title: '&#9989; Modo sin conexi&#243;n activo',
+        html: '<b>' + _desp_sourceData.length + ' lotes</b> guardados.<br>Puedes desconectarte y seguir trabajando.',
+        icon: 'success', timer: 3000, showConfirmButton: false
+      });
+    })
+    .withFailureHandler(function(e) { hideLoader(); Swal.fire('Error al descargar', '' + e, 'error'); })
+    .obtenerDatosOffline();
+}
+
+function _offlineGenerarEtiquetasHTML(lista) {
+  var mapOrd = _offlineGetOrdenes();
+  var fecha  = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  var etiquetas = [];
+  lista.forEach(function(item) {
+    var infoO = mapOrd[item.ordenRef || ''] || mapOrd[item.lote] || null;
+    if (!infoO) return;
+    var pNeto = Number(item.kg) || 0;
+    var pUnit = Number(infoO.pesoU) || 0;
+    var conversion = '-';
+    if (pUnit > 0) {
+      var tipo = String(infoO.tipo || '').toUpperCase();
+      if (tipo.includes('VARILLA')) {
+        var lon = parseFloat(String(infoO.long).replace(/[^0-9.]/g,'')) || 1;
+        conversion = '( ' + Math.round(pNeto / (pUnit * lon)).toLocaleString('es-MX') + ' PZA )';
+      } else if (tipo.includes('COLATADO')) {
+        conversion = '( ' + Math.round(pNeto / pUnit).toLocaleString('es-MX') + ' ROLLOS )';
+      } else {
+        conversion = '( ' + Math.round(pNeto / pUnit).toLocaleString('es-MX') + ' PZA )';
+      }
+    }
+    etiquetas.push({
+      lote: item.lote, pedido: infoO.pedido||'-', codigo: infoO.codigo||'-', desc: infoO.desc||'-',
+      tipo: infoO.tipo||'-', dia: infoO.dia||'-', long: infoO.long||'-',
+      det: (infoO.cuerda||'')+' '+(infoO.cuerpo||''), acero: infoO.acero||'-',
+      pesoU: pUnit, pesoNeto: pNeto, conversion: conversion,
+      sello: item.sello||'-', tina: item.tina||'-',
+      pesoBruto: Number(item.pesoBruto)||0, pesoTina: Number(item.pesoTina)||0,
+      fechaImp: fecha, iconoTipo: infoO.iconoSVG||''
+    });
+  });
+  if (!etiquetas.length) return null;
+  var rows = etiquetas.map(function(e) {
+    return '<div style="page-break-after:always;padding:20px;font-family:Arial,sans-serif;max-width:800px;margin:0 auto;border:2px solid #1A237E">'
+      +'<table width="100%" style="border-collapse:collapse">'
+      +'<tr><td colspan="4" style="background:#1A237E;color:white;padding:8px;font-size:18px;font-weight:bold;text-align:center">EMBARQUES CN &mdash; '+e.codigo+'</td></tr>'
+      +'<tr>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:11px"><b>LOTE</b><br>'+e.lote+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:11px"><b>PEDIDO</b><br>'+e.pedido+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:11px"><b>SELLO</b><br>'+e.sello+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:11px"><b>TINA</b><br>'+e.tina+'</td>'
+      +'</tr>'
+      +'<tr><td colspan="4" style="padding:6px;border:1px solid #ccc;font-size:13px"><b>DESCRIPCI&#211;N:</b> '+e.desc+'</td></tr>'
+      +'<tr>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:12px"><b>TIPO</b><br>'+e.tipo+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:12px"><b>DIA</b><br>'+e.dia+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:12px"><b>LONG</b><br>'+e.long+'</td>'
+      +'<td style="padding:6px;border:1px solid #ccc;font-size:12px"><b>ACERO</b><br>'+e.acero+'</td>'
+      +'</tr>'
+      +'<tr style="background:#e8f5e9">'
+      +'<td style="padding:8px;border:1px solid #ccc;font-size:13px;font-weight:bold" colspan="2">PESO BRUTO: '+e.pesoBruto.toLocaleString('es-MX')+' KG</td>'
+      +'<td style="padding:8px;border:1px solid #ccc;font-size:13px;font-weight:bold" colspan="2">TARA TINA: '+e.pesoTina.toLocaleString('es-MX')+' KG</td>'
+      +'</tr>'
+      +'<tr style="background:#1A237E">'
+      +'<td colspan="2" style="padding:10px;color:white;font-size:22px;font-weight:bold;text-align:center">PESO NETO: '+e.pesoNeto.toLocaleString('es-MX')+' KG</td>'
+      +'<td colspan="2" style="padding:10px;color:white;font-size:16px;font-weight:bold;text-align:center">'+e.conversion+'</td>'
+      +'</tr>'
+      +'<tr><td colspan="4" style="padding:4px;font-size:10px;color:#666;text-align:right">Impreso: '+e.fechaImp+' [OFFLINE]</td></tr>'
+      +'</table></div>';
+  });
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Etiquetas</title><style>@media print{body{margin:0}}</style></head><body>'+rows.join('')+'</body></html>';
+}
+
+function _offlineSincronizar(callbackDespues) {
+  var pendientes = _offlineGetPendientes();
+  if (!pendientes.length) {
+    Swal.fire('Sin pendientes', 'No hay cambios por sincronizar.', 'info');
+    if (typeof callbackDespues === 'function') callbackDespues();
+    return;
+  }
+  if (!navigator.onLine) {
+    Swal.fire({ title: 'Sin internet', text: 'No hay conexi&#243;n a internet. Conect&#225;te y vuelve a intentarlo.', icon: 'warning' });
+    return;
+  }
+  showLoader('Sincronizando ' + pendientes.length + ' despacho(s)...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      if (res && res.ok) {
+        _offlineSetPendientes([]);
+        Swal.fire({
+          title: '&#9989; Sincronizado',
+          html: '<b>' + res.procesados + '</b> despacho(s) guardados en el servidor.<br>&#191;Deseas salir del modo sin conexi&#243;n?',
+          icon: 'success', showCancelButton: true,
+          confirmButtonText: 'S&#237;, volver a modo normal', cancelButtonText: 'Seguir sin conexi&#243;n'
+        }).then(function(r) {
+          if (r.isConfirmed) {
+            localStorage.removeItem(OFFLINE_KEY_ACTIVO);
+            localStorage.removeItem(OFFLINE_KEY_LOTES);
+            localStorage.removeItem(OFFLINE_KEY_ORDENES);
+            localStorage.removeItem(OFFLINE_KEY_FECHA);
+          }
+          _offlineRenderBarra();
+          loadDespachos();
+          if (typeof callbackDespues === 'function') callbackDespues();
+        });
+      } else {
+        Swal.fire('Error al sincronizar', res ? (res.error || 'Error desconocido') : 'Sin respuesta', 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      Swal.fire('Error de conexi&#243;n', 'No se pudo conectar al servidor: ' + e, 'error');
+    })
+    .sincronizarDespachosOffline(pendientes);
+}
+
+</script>
+
+<!-- Modal filtros Circulante Consulta (mismo patrón que Existencia) -->
+<div class="modal fade" id="circonModalFiltro" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-1">
+        <h6 class="modal-title fw-bold" id="circonTitFiltro"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="circonBusFiltro" class="form-control form-control-sm mb-2" placeholder="Buscar..." oninput="_cirConFiltrarChecks()">
+        <div class="d-flex gap-3 mb-2">
+          <span style="color:#1565c0;cursor:pointer;font-weight:700;font-size:.8rem" onclick="_cirConToggleTodos(true)">✔ Todos</span>
+          <span style="color:#dc2626;cursor:pointer;font-weight:700;font-size:.8rem" onclick="_cirConToggleTodos(false)">✖ Ninguno</span>
+        </div>
+        <div id="circonListaChecks" class="filter-list" style="max-height:250px;overflow-y:auto;border:1px solid #ddd;padding:10px"></div>
+      </div>
+      <div class="modal-footer py-1">
+        <button type="button" class="btn btn-primary btn-sm w-100" onclick="_cirConAplicarFiltro()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modales estáticos GestionMP (Bootstrap, mismo patrón que Existencia) -->
+<div class="modal fade" id="gmpModalSalidaInd" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h6 class="modal-title" id="gmpSalIndTitle"></h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="gmp-sal-ind-id">
+        <div class="mb-3"><label class="form-label fw-bold">Fecha de Salida</label><input type="date" id="gmp-sal-ind-fecha" class="form-control"></div>
+        <div class="mb-3"><label class="form-label fw-bold">Comentarios</label><textarea id="gmp-sal-ind-comm" class="form-control" style="text-transform:uppercase"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary w-100" onclick="_gmpRegistrarCambioSalida()">Agregar a la lista</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="gmpModalSalidaConfirm" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Confirmar Salidas de Alambrón</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Se realizarán estas salidas:</p>
+        <div id="gmp-lista-confirm-sal" class="list-group"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-danger" onclick="_gmpEjecutarSalidasFinal()">Aceptar y Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal Filtro Consultas GMP (mismo patrón Existencia) -->
+<div class="modal fade" id="gmpModalFiltro" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header py-1">
+        <h6 id="gmpTitFiltro" class="mb-0 fw-bold"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="gmpBusFiltro" class="form-control form-control-sm mb-2" placeholder="Buscar..." oninput="_gmpFiltrarChecksCon()">
+        <div class="d-flex gap-3 mb-2">
+          <span style="color:#1565c0;cursor:pointer;font-weight:700;font-size:.8rem" onclick="_gmpToggleTodosCon(true)">✔ Todos</span>
+          <span style="color:#dc2626;cursor:pointer;font-weight:700;font-size:.8rem" onclick="_gmpToggleTodosCon(false)">✖ Ninguno</span>
+        </div>
+        <div id="gmpListaChecks" class="filter-list" style="max-height:250px;overflow-y:auto;border:1px solid #ddd;padding:10px"></div>
+      </div>
+      <div class="modal-footer py-1">
+        <button class="btn btn-primary btn-sm w-100" onclick="_gmpAplicarFiltroCon()">Aplicar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal edición lote Despachos -->
+<div class="modal fade" id="despModalEdit" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title fw-bold">DATOS DE EMBARQUE</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="desp-modal-info" class="alert alert-light py-2 mb-2 text-center" style="font-size:.85rem"></div>
+        <div class="mb-2">
+          <label class="form-label fw-bold mb-1">PESO BRUTO (KG) <span class="text-danger">*</span></label>
+          <input type="number" id="desp-inp-bruto" class="form-control" placeholder="0" step="1" oninput="_despCalcNeto()">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold mb-1">PESO TINA (KG) <span class="text-muted fw-normal">(0 si no aplica)</span></label>
+          <input type="number" id="desp-inp-tina-peso" class="form-control" placeholder="0" step="1" value="0" oninput="_despCalcNeto()">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold mb-1 text-muted">PESO NETO (KG) — calculado</label>
+          <input type="number" id="desp-inp-kg" class="form-control bg-light" readonly tabindex="-1">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold mb-1">NÚMERO DE TINA <span class="text-danger">*</span></label>
+          <input type="text" id="desp-inp-tina" class="form-control" placeholder="Ej: 105">
+        </div>
+        <div class="mb-2">
+          <label class="form-label fw-bold mb-1">SELLO DE EMBARQUE <span class="text-muted fw-normal">(opcional)</span></label>
+          <input type="text" id="desp-inp-sello" class="form-control" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-success fw-bold" id="desp-btn-guardar" onclick="_despGuardarEnCola()">AGREGAR A LISTA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Registro Consulta MP -->
+<div class="modal fade" id="gmpModalEditCon" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;overflow:hidden;border:none">
+      <div class="modal-header" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none">
+        <h6 class="modal-title fw-bold text-white" style="font-size:.95rem;letter-spacing:.04em">
+          <i class="fas fa-pencil-alt me-2"></i>EDITAR REGISTRO DE MATERIA PRIMA
+        </h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:1.2rem 1.4rem">
+        <input type="hidden" id="gmpEditConId">
+        <div class="alert" style="background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:8px 12px;font-size:.78rem;color:#92400e;margin-bottom:1rem">
+          <i class="fas fa-info-circle me-1"></i>Solo puedes editar: <strong>Diámetro, Acero, Rollo, Kilos y Colada.</strong> Los cambios quedan registrados en el historial.
+        </div>
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1" style="font-size:.75rem;text-transform:uppercase;color:#374151">Diámetro</label>
+            <input type="text" id="gmpEditConDiam" class="form-control form-control-sm" style="text-transform:uppercase;font-weight:700">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1" style="font-size:.75rem;text-transform:uppercase;color:#374151">Acero</label>
+            <input type="text" id="gmpEditConAcero" class="form-control form-control-sm" style="text-transform:uppercase;font-weight:700">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1" style="font-size:.75rem;text-transform:uppercase;color:#374151">No. Rollo</label>
+            <input type="text" id="gmpEditConRollo" class="form-control form-control-sm" style="font-weight:700">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-bold mb-1" style="font-size:.75rem;text-transform:uppercase;color:#374151">Kilos</label>
+            <input type="number" id="gmpEditConKilos" class="form-control form-control-sm" style="font-weight:700" step="0.01">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold mb-1" style="font-size:.75rem;text-transform:uppercase;color:#374151">Colada</label>
+            <input type="text" id="gmpEditConColada" class="form-control form-control-sm" style="text-transform:uppercase;font-weight:700">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid #f1f5f9;padding:.8rem 1.2rem;gap:8px">
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-sm fw-bold" style="background:#f59e0b;color:white;min-width:140px" onclick="_gmpGuardarEditCon()">
+          <i class="fas fa-save me-1"></i>Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

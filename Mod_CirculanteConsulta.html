@@ -1,0 +1,851 @@
+function loadCirculanteConsulta() {
+  showLoader('Cargando historial...');
+  // Siempre recarga para tener datos frescos
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      _cirCon_dbRaw = res || [];
+      _cirCon_activeFilters = {};
+      // Default: mes actual
+      var mesActual = new Date().getMonth() + 1;
+      _cirCon_filtered = _cirCon_dbRaw.slice(1).filter(function(r){ return Number(r[14]) === mesActual; });
+      _cirConRenderUI();
+    })
+    .withFailureHandler(function(e){ hideLoader(); document.getElementById('content-area').innerHTML=_modErr('Circulante Consulta','getRegistrosCirculante',e); })
+    .getRegistrosCirculante();
+}
+
+function _cirConRenderUI() {
+  var meses=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  var mesActual = new Date().getMonth();
+  var html = '<div class="modulo-inline" style="display:flex;flex-direction:column;height:calc(100vh - 80px);min-height:unset">'
+    +'<div style="background:#0f172a;padding:10px 16px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex-shrink:0">'
+    +'<span class="text-white fw-bold"><i class="fas fa-history me-2 opacity-75"></i>CONSULTA E HISTORIAL — CIRCULANTE</span>'
+    +'<div class="ms-auto d-flex gap-2">'
+    +'<button class="btn btn-warning btn-sm fw-bold" onclick="_cirConLimpiarFiltros()"><i class="fas fa-times me-1"></i>Limpiar filtros</button>'
+    +'<button class="btn btn-success btn-sm fw-bold" onclick="_cirConExportarExcel()"><i class="fas fa-file-excel me-1"></i>Excel</button>'
+    +'</div></div>'
+    +'<div style="padding:10px 16px 6px;background:#f8fafc;border-bottom:1px solid #e2e8f0;flex-shrink:0">'
+    +'<div class="d-flex flex-wrap gap-1 align-items-center">'
+    +'<span class="text-muted fw-bold me-2" style="font-size:.72rem;text-transform:uppercase">Mes:</span>'
+    +meses.map(function(n,i){
+      var active = (i===mesActual)?'background:#1565c0;color:white;border-color:#1565c0':'background:white;color:#64748b';
+      return '<button class="btn btn-sm fw-bold rounded-pill circon-mes-btn" data-val="'+(i+1)+'" style="border:1px solid #dee2e6;font-size:.7rem;padding:3px 10px;'+active+'" onclick="_cirConToggleMes(this)">'+n+'</button>';
+    }).join('')
+    +'<button class="btn btn-primary btn-sm fw-bold ms-3 rounded-pill px-3" onclick="_cirConFiltrarPorMeses()" style="font-size:.72rem">VER</button>'
+    +'</div></div>'
+    +'<div style="padding:12px 16px;overflow:auto;flex:1">'
+    +'<table class="tbl-emb" id="circon-tbl">'
+    +'<thead><tr id="circon-thead" style="background:#0f172a;color:white"></tr></thead>'
+    +'<tbody id="circon-tbody"></tbody>'
+    +'</table></div>'
+    +'<div id="circon-summary" class="d-flex gap-3 flex-wrap p-2 px-3 mb-0" style="background:#f8fafc;font-size:.78rem;font-weight:800;border-top:2px solid #e2e8f0;flex-shrink:0">'
+    +'<span id="circon-sum-reg" style="color:#1565c0">REGISTROS: 0</span>'
+    +'<span id="circon-sum-cant" style="color:#16a34a">Σ CANTIDAD: 0</span>'
+    +'<span id="circon-sum-kil" style="color:#c2410c">Σ KILOS: 0</span>'
+    +'<span id="circon-sum-rec" style="color:#7e22ce">Σ RECIBIDO: 0</span>'
+    +'</div>'
+    +'</div>';
+  document.getElementById('content-area').innerHTML = html;
+  // Inicializar modal Bootstrap (mismo patrón que Existencia / RESUMEN)
+  if(!window._cirConModal) {
+    window._cirConModal = new bootstrap.Modal(document.getElementById('circonModalFiltro'));
+  }
+  _cirConRenderTabla();
+}
+
+
+function _cirConToggleMes(btn) {
+  var isActive = btn.style.background === 'rgb(21, 101, 192)' || btn.style.background === '#1565c0';
+  if(isActive) { btn.style.background='white'; btn.style.color='#64748b'; btn.style.borderColor='#dee2e6'; }
+  else { btn.style.background='#1565c0'; btn.style.color='white'; btn.style.borderColor='#1565c0'; }
+}
+function _cirConFiltrarPorMeses() {
+  var months = Array.from(document.querySelectorAll('.circon-mes-btn')).filter(function(b){
+    return b.style.background === 'rgb(21, 101, 192)' || b.style.background === '#1565c0';
+  }).map(function(b){ return b.dataset.val; });
+  _cirCon_filtered = _cirCon_dbRaw.slice(1).filter(function(r){ return !months.length || months.includes(String(r[14])); });
+  _cirCon_activeFilters = {};
+  _cirConRenderTabla();
+}
+
+var _cirCon_colActual = -1;
+function _cirConRenderTabla() {
+  var thead = document.getElementById('circon-thead');
+  var tbody = document.getElementById('circon-tbody');
+  if(!thead || !tbody) return;
+  // Build filtered data applying column filters
+  var data = _cirCon_filtered.filter(function(r){
+    return Object.keys(_cirCon_activeFilters).every(function(idx){ return _cirCon_activeFilters[idx].includes(String(r[idx]||'')); });
+  });
+  // Headers
+  thead.innerHTML = '';
+  _cirCon_colsToShow.forEach(function(idx){
+    var th = document.createElement('th');
+    var hasFilter = _cirCon_activeFilters[idx] && _cirCon_activeFilters[idx].length < [...new Set(_cirCon_filtered.map(function(r){return String(r[idx]||'');}))].length;
+    th.style.cssText = 'cursor:pointer;padding:9px 10px;white-space:nowrap;'+(hasFilter?'background:#f59e0b!important;color:#0f172a!important':'');
+    th.innerHTML = (_cirCon_dbRaw[0]&&_cirCon_dbRaw[0][idx]?_cirCon_dbRaw[0][idx]:idx)+'<span style="color:'+(hasFilter?'#0f172a':'#93c5fd');
+    th.innerHTML = (_cirCon_dbRaw[0]&&_cirCon_dbRaw[0][idx]?_cirCon_dbRaw[0][idx]:idx)
+      +(hasFilter?' <i class="fas fa-filter" style="color:#0f172a;font-size:.6rem"></i>':' <span style="color:#93c5fd;font-size:.65rem">▼</span>');
+    th.setAttribute('data-cidx', idx);
+    th.onclick = (function(i){ return function(){ _cirConAbrirFiltroCol(i, this); }; })(idx);
+    thead.appendChild(th);
+  });
+  // Add delete column header
+  var thDel = document.createElement('th'); thDel.style.cssText='padding:9px 6px;width:32px'; thDel.innerText=''; thead.appendChild(thDel);
+
+  // Rows
+  var sC=0,sK=0,sR=0;
+  tbody.innerHTML = data.map(function(r){
+    sC += Number(r[11])||0; sK += Number(r[12])||0; sR += Number(r[13])||0;
+    // original row index in dbRaw
+    var rawIdx = _cirCon_dbRaw.indexOf(r) + 1; // 1-based row in sheet (header=0, data from 1)
+    return '<tr>'
+      +_cirCon_colsToShow.map(function(idx){ return '<td style="font-size:.75rem;white-space:nowrap">'+String(r[idx]||'')+'</td>'; }).join('')
+      +'<td style="padding:4px 6px"><button onclick="_cirConEliminar('+rawIdx+')" style="background:none;border:none;color:#dc2626;font-size:1rem;cursor:pointer;line-height:1" title="Eliminar">✕</button></td>'
+      +'</tr>';
+  }).join('');
+  if(!data.length) tbody.innerHTML = '<tr><td colspan="'+(+_cirCon_colsToShow.length+1)+'" class="text-center text-muted py-4">Sin registros en el periodo seleccionado</td></tr>';
+  var s1=document.getElementById('circon-sum-reg'); if(s1) s1.innerText='REGISTROS: '+data.length;
+  var s2=document.getElementById('circon-sum-cant'); if(s2) s2.innerText='Σ CANTIDAD: '+sC.toLocaleString('es-MX');
+  var s3=document.getElementById('circon-sum-kil'); if(s3) s3.innerText='Σ KILOS: '+sK.toLocaleString('es-MX');
+  var s4=document.getElementById('circon-sum-rec'); if(s4) s4.innerText='Σ RECIBIDO: '+sR.toLocaleString('es-MX');
+}
+function _cirConAbrirFiltroCol(idx, thEl) {
+  _cirCon_colActual = idx;
+  // Filtro combinado: opciones basadas en data sin aplicar el filtro actual (igual que Existencia)
+  var dataBase = _cirCon_filtered.filter(function(r) {
+    return Object.keys(_cirCon_activeFilters).every(function(k) {
+      return Number(k) === idx || _cirCon_activeFilters[k].includes(String(r[k]||''));
+    });
+  });
+  var opciones = [...new Set(dataBase.map(function(r){ return String(r[idx]||''); }))].sort(function(a,b){ return a.localeCompare(b,undefined,{numeric:true}); });
+  var sel = _cirCon_activeFilters[idx] || opciones;
+  var colNombre = (_cirCon_dbRaw[0] && _cirCon_dbRaw[0][idx]) ? _cirCon_dbRaw[0][idx] : 'Col '+idx;
+  document.getElementById('circonTitFiltro').innerText = 'Filtrar ' + colNombre.toUpperCase();
+  document.getElementById('circonBusFiltro').value = '';
+  document.getElementById('circonListaChecks').innerHTML = opciones.map(function(opt) {
+    return '<div class="form-check">'      +'<input class="form-check-input circon-chk" type="checkbox" value="'+opt+'"'+(sel.includes(opt)?' checked':'')+'>'      +'<label class="form-check-label" style="font-size:.82rem">'+opt+'</label>'      +'</div>';
+  }).join('');
+  window._cirConModal.show();
+}
+function _cirConFiltrarChecks() {
+  var val = (document.getElementById('circonBusFiltro').value||'').toLowerCase();
+  document.querySelectorAll('#circonListaChecks .form-check').forEach(function(el) {
+    el.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none';
+  });
+}
+function _cirConToggleTodos(v) {
+  document.querySelectorAll('.circon-chk').forEach(function(cb) {
+    if(cb.parentElement.style.display !== 'none') cb.checked = v;
+  });
+}
+function _cirConAplicarFiltro() {
+  _cirCon_activeFilters[_cirCon_colActual] = Array.from(document.querySelectorAll('.circon-chk:checked')).map(function(c){ return c.value; });
+  if(!_cirCon_activeFilters[_cirCon_colActual].length) delete _cirCon_activeFilters[_cirCon_colActual];
+  _cirConRenderTabla();
+  window._cirConModal.hide();
+}
+function _cirConLimpiarFiltros() { _cirCon_activeFilters={}; _cirConRenderTabla(); }
+
+async function _cirConExportarExcel() {
+  if (typeof ExcelJS === 'undefined') {
+    Swal.fire('Error', 'Librería ExcelJS no disponible.', 'error');
+    return;
+  }
+
+  // Aplicar filtros activos sobre los datos filtrados por mes
+  var data = _cirCon_filtered.filter(function(r) {
+    return Object.keys(_cirCon_activeFilters).every(function(k) {
+      return _cirCon_activeFilters[k].includes(String(r[k] || ''));
+    });
+  });
+
+  if (!data.length) {
+    Swal.fire('Info', 'No hay datos para exportar.', 'info');
+    return;
+  }
+
+  showLoader('GENERANDO EXCEL CON FORMATO PROFESIONAL...');
+
+  try {
+    // Obtener nombres de columnas del header (fila 0 del raw)
+    var headers = _cirCon_dbRaw[0] || [];
+    // Columnas a mostrar: índices [1,2,3,4,5,6,7,8,9,10,11,12,13,16,17,18]
+    var cols = _cirCon_colsToShow;
+    var colNames = cols.map(function(i) {
+      return headers[i] ? String(headers[i]).toUpperCase() : 'COL' + i;
+    });
+
+    await _cirGenerarExcelProfesional(data, cols, colNames, 'Consulta_Circulante');
+  } catch(e) {
+    hideLoader();
+    Swal.fire('Error', 'Error al generar Excel: ' + e, 'error');
+  }
+}
+
+function _cirConEliminar(rawIdx) {
+  var fila = _cirCon_dbRaw[rawIdx];
+  if(!fila) return;
+  Swal.fire({
+    title:'¿Eliminar registro?',
+    html:'<p>Movimiento: <strong>'+(fila[3]||'')+'</strong><br>Fecha: '+(fila[2]||'')+'<br>Código: '+(fila[5]||'')+'<br>Kilos: '+(fila[12]||0)+'</p>',
+    icon:'warning',showCancelButton:true,confirmButtonText:'Sí, eliminar',confirmButtonColor:'#dc2626',cancelButtonText:'Cancelar'
+  }).then(function(res){
+    if(!res.isConfirmed) return;
+    var rowId = fila[0]; // Col A = ID
+    showLoader('Eliminando...');
+    google.script.run
+      .withSuccessHandler(function(){
+        hideLoader();
+        Swal.fire({icon:'success',title:'Eliminado',timer:1500,showConfirmButton:false});
+        loadCirculanteConsulta();
+      })
+      .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error',''+e,'error'); })
+      .eliminarRegistroCirculante(rowId);
+  });
+}
+
+// _cirRenderUI y _cirShowTab removidos — Captura está en _cirRenderCaptura(), Consulta en _cirConRenderUI()
+
+function _cirSetMov(btn) {
+  document.querySelectorAll('.cir-btn-mov').forEach(function(b) {
+    b.classList.remove('activo');
+  });
+  btn.classList.add('activo');
+  _cir_currentMov = btn.textContent.trim();
+}
+
+function _cirNuevaFila() {
+  var mov=_cir_currentMov, envio=(document.getElementById('cir-h-envio')||{}).value||'', fecha=(document.getElementById('cir-h-fecha')||{}).value||'';
+  if(!mov||!envio) { Swal.fire({title:'Faltan datos',text:'Selecciona MOVIMIENTO e ingresa FOLIO DE ENVÍO primero.',icon:'warning',confirmButtonColor:'#1565c0'}); return; }
+  var tbody=document.getElementById('cir-tbody-cap'); if(!tbody) return;
+  // Validar que última fila esté completa
+  var filas=tbody.querySelectorAll('tr');
+  if(filas.length>0 && !filas[filas.length-1].classList.contains('cir-row-valid')){
+    _cirMarcarFaltantes(filas[filas.length-1]);
+    return;
+  }
+  var idx=filas.length+1;
+  var tr=document.createElement('tr');
+  tr.dataset.rowMov=mov; tr.dataset.rowEnv=envio; tr.dataset.rowFec=fecha;
+  tr.innerHTML='<td class="text-muted" style="font-size:.75rem">'+idx+'</td>'
+    +'<td style="position:relative;min-width:160px">'
+    +'<input class="form-control form-control-sm cir-f-cod" placeholder="Código..." oninput="_cirBuscarCod(this)" onblur="_cirCodExacto(this)" onkeydown="if(event.key===\'Enter\'||event.key===\'Tab\'){_cirCodExacto(this);}" autocomplete="off">'
+    +'<div class="cir-ac-box" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;background:white;border:2px solid #1a1c1e;border-radius:0 0 8px 8px;max-height:300px;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)"></div>'
+    +'</td>'
+    +'<td><span class="cir-f-desc" style="font-size:.75rem;font-weight:700;color:#0f172a">—</span></td>'
+    +'<td><span class="cir-f-dia" style="font-size:.75rem">—</span></td>'
+    +'<td><span class="cir-f-lar" style="font-size:.75rem">—</span></td>'
+    +'<td><span class="cir-f-ace" style="font-size:.75rem">—</span></td>'
+    +'<td><input class="form-control form-control-sm cir-f-ped" placeholder="Pedido..." onblur="this.dataset.tocado=\'1\';_cirCheckFila(this)" oninput="_cirCheckFila(this)"></td>'
+    +'<td><input class="form-control form-control-sm cir-f-ori" placeholder="Origen..." onblur="this.dataset.tocado=\'1\';_cirCheckFila(this)" oninput="_cirCheckFila(this)"></td>'
+    +'<td><input type="number" class="form-control form-control-sm cir-f-can" placeholder="0" style="min-width:90px" onblur="this.dataset.tocado=\'1\';_cirCheckFila(this)" oninput="_cirCheckFila(this)"></td>'
+    +'<td><select class="form-select form-select-sm cir-f-uni" style="min-width:100px"><option>KILOS</option><option>PZA</option><option>ROLLO</option></select></td>'
+    +'<td><input type="number" class="form-control form-control-sm cir-f-kil" placeholder="0" style="min-width:100px" onblur="this.dataset.tocado=\'1\';_cirCheckFila(this)" oninput="_cirCheckFila(this)"></td>'
+    +'<td><input type="number" class="form-control form-control-sm cir-f-krec" placeholder="0" style="min-width:100px"></td>'
+    +'<td><input class="form-control form-control-sm cir-f-com" placeholder="Comentarios..."></td>'
+    +'<td><button class="btn btn-sm p-0" style="color:#dc2626;font-size:1rem" onclick="this.closest(\'tr\').remove();_cirCheckGuardar()">✕</button></td>';
+  tbody.appendChild(tr);
+}
+
+function _cirBuscarCod(input) {
+  var val=(input.value||'').toLowerCase();
+  var box=input.nextElementSibling;
+  box.innerHTML=''; if(!val){box.style.display='none';return;}
+  var matches=_cir_catalogo.slice(1).filter(function(r){ return r[1] && (String(r[1]).toLowerCase().includes(val)||String(r[2]).toLowerCase().includes(val)); }).slice(0,10);
+  if(!matches.length){box.style.display='none';return;}
+  matches.forEach(function(r){
+    var d=document.createElement('div');
+    d.style.cssText='display:grid;grid-template-columns:100px 1fr 100px;gap:12px;padding:9px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-size:.75rem;align-items:center';
+    d.innerHTML='<span style="font-weight:800;color:#1565c0">'+r[1]+'</span><span>'+r[2]+(r[3]?' | '+r[3]:'')+(r[4]?' | '+r[4]:'')+(r[5]?' | '+r[5]:'')+'</span><span style="color:#64748b">'+r[6]+'</span>';
+    d.onmouseover=function(){this.style.background='#1565c0';this.style.color='white';};
+    d.onmouseout=function(){this.style.background='';this.style.color='';};
+    d.onmousedown=function(e){e.preventDefault();_cirSelCod(input,r);};
+    box.appendChild(d);
+  });
+  box.style.display='block';
+}
+function _cirSelCod(input,row) {
+  input.value=row[1];
+  input.nextElementSibling.style.display='none';
+  var tr=input.closest('tr');
+  tr.querySelector('.cir-f-desc').innerText=(row[2]||'')+(row[3]?' | Ø'+row[3]:'')+(row[4]?' L:'+row[4]:'');
+  tr.querySelector('.cir-f-dia').innerText=row[3]||'';
+  tr.querySelector('.cir-f-lar').innerText=row[4]||'';
+  tr.querySelector('.cir-f-ace').innerText=row[5]||'';
+  tr.querySelector('.cir-f-uni').value=row[6]||'KILOS';
+  tr.dataset.itemData=JSON.stringify(row);
+  _cirCheckFila(input);
+}
+function _cirCodExacto(input) {
+  var box=input.nextElementSibling;
+  if(box) box.style.display='none';
+  var val=(input.value||'').trim();
+  if(!val) return;
+  var row=_cir_catalogo.slice(1).find(function(r){ return r[1] && String(r[1]).trim().toLowerCase()===val.toLowerCase(); });
+  if(row){ _cirSelCod(input,row); return; }
+  // Código no existe
+  Swal.fire({
+    title:'Código no encontrado',
+    html:'El código <strong>'+val+'</strong> no existe en el catálogo.',
+    icon:'warning',
+    showCancelButton:true,
+    confirmButtonText:'Dar de Alta',
+    cancelButtonText:'Cancelar',
+    confirmButtonColor:'#1565c0',
+    cancelButtonColor:'#6b7280'
+  }).then(function(r){
+    if(r.isConfirmed){ _cirAbrirModalCat(val); }
+    else { input.value=''; input.classList.remove('cir-campo-falta'); }
+  });
+}
+function _cirCheckFila(el) {
+  var tr=el.closest('tr');
+  var campos=[
+    {el:tr.querySelector('.cir-f-cod'),  key:'cod'},
+    {el:tr.querySelector('.cir-f-ped'),  key:'ped'},
+    {el:tr.querySelector('.cir-f-ori'),  key:'ori'},
+    {el:tr.querySelector('.cir-f-can'),  key:'can'},
+    {el:tr.querySelector('.cir-f-kil'),  key:'kil'}
+  ];
+  var ok=true;
+  campos.forEach(function(c){
+    if(!c.el) return;
+    var vacio=!c.el.value.trim();
+    if(vacio) ok=false;
+    // Solo marcar si el campo ya fue tocado (tiene valor o perdió foco antes)
+    if(vacio && c.el.dataset.tocado) c.el.classList.add('cir-campo-falta');
+    else c.el.classList.remove('cir-campo-falta');
+  });
+  tr.classList.toggle('cir-row-valid',!!ok);
+  tr.style.background=ok?'#f0fdf4':'';
+  _cirCheckGuardar();
+}
+function _cirMarcarFaltantes(tr) {
+  var campos=['.cir-f-cod','.cir-f-ped','.cir-f-ori','.cir-f-can','.cir-f-kil'];
+  var hayFalta=false;
+  campos.forEach(function(sel){
+    var el=tr.querySelector(sel); if(!el) return;
+    if(!el.value.trim()){ el.classList.add('cir-campo-falta'); el.dataset.tocado='1'; hayFalta=true; }
+    else el.classList.remove('cir-campo-falta');
+  });
+  return hayFalta;
+}
+function _cirCheckGuardar() {
+  var total=document.querySelectorAll('#cir-tbody-cap tr').length;
+  var ok=document.querySelectorAll('#cir-tbody-cap tr.cir-row-valid').length;
+  var btn=document.getElementById('cir-btn-save');
+  if(btn) btn.style.display=(total>0&&total===ok)?'inline-block':'none';
+}
+function _cirGuardarTodo() {
+  var data=[];
+  document.querySelectorAll('#cir-tbody-cap tr.cir-row-valid').forEach(function(tr){
+    var fecRaw=tr.dataset.rowFec||'';
+    var partes=fecRaw.split('-'); var fecha=partes.length===3?partes[2]+'/'+partes[1]+'/'+partes[0]:fecRaw;
+    data.push({movimiento:tr.dataset.rowMov,fecha:fecha,envio:tr.dataset.rowEnv,
+      codigo:tr.querySelector('.cir-f-cod').value,descripcion:tr.querySelector('.cir-f-desc').innerText,
+      diametro:tr.querySelector('.cir-f-dia').innerText,largo:tr.querySelector('.cir-f-lar').innerText,
+      acero:tr.querySelector('.cir-f-ace').innerText,pedido:tr.querySelector('.cir-f-ped').value,
+      origen:tr.querySelector('.cir-f-ori').value,cantidad:tr.querySelector('.cir-f-can').value,
+      unidad:tr.querySelector('.cir-f-uni').value,kilos:tr.querySelector('.cir-f-kil').value,
+      kilos_rec:tr.querySelector('.cir-f-krec').value,comentarios:tr.querySelector('.cir-f-com').value});
+  });
+  showLoader('Guardando registros...');
+  google.script.run
+    .withSuccessHandler(function(){
+      hideLoader();
+      Swal.fire({icon:'success',title:'¡Guardado!',text:data.length+' registro(s) guardados correctamente.',timer:2000,showConfirmButton:false,timerProgressBar:true})
+        .then(function(){ loadCirculante(); });
+    })
+    .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error',''+e,'error'); })
+    .guardarRegistrosCirculante(data);
+}
+
+// ── Consulta
+function _cirCargarConsulta() {
+  if(_cir_dbRaw.length) return; // ya cargado
+  showLoader('Cargando historial...');
+  google.script.run
+    .withSuccessHandler(function(res){ hideLoader(); _cir_dbRaw=res||[]; })
+    .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error','No se pudo cargar: '+e,'error'); })
+    .getRegistrosCirculante();
+}
+function _cirEjecutarConsulta() {
+  if(!_cir_dbRaw.length){Swal.fire('Espera','Los datos aún no cargan','info');return;}
+  var months=Array.from(document.querySelectorAll('#cir-month-btns button.btn-primary')).map(function(b){return b.dataset.val;});
+  _cir_filteredData=_cir_dbRaw.slice(1).filter(function(r){ return !months.length||months.includes(String(r[14])); });
+  _cirRenderFinal();
+}
+function _cirRenderFinal() {
+  var data=[..._cir_filteredData];
+  Object.keys(_cir_activeFilters).forEach(function(idx){
+    var sel=_cir_activeFilters[idx];
+    data=data.filter(function(r){ return sel.includes(String(r[idx])); });
+  });
+  var h=document.getElementById('cir-query-h');
+  var b=document.getElementById('cir-query-b');
+  if(!h||!b) return;
+  h.innerHTML='';
+  _cir_colsToShow.forEach(function(idx){
+    var th=document.createElement('th');
+    th.innerHTML=(_cir_dbRaw[0]&&_cir_dbRaw[0][idx]?_cir_dbRaw[0][idx]:idx)+' <span style="cursor:pointer;color:#93c5fd" onclick="_cirOpenFilter(this,'+idx+')">▼</span>';
+    h.appendChild(th);
+  });
+  var sC=0,sK=0,sR=0;
+  b.innerHTML=data.map(function(r){
+    sC+=Number(r[11])||0; sK+=Number(r[12])||0; sR+=Number(r[13])||0;
+    return '<tr>'+_cir_colsToShow.map(function(idx){ return '<td style="font-size:.75rem;white-space:nowrap">'+String(r[idx]||'')+'</td>'; }).join('')+'</tr>';
+  }).join('');
+  var srEl=document.getElementById('cir-sum-reg');
+  var scEl=document.getElementById('cir-sum-cant');
+  var skEl=document.getElementById('cir-sum-kil');
+  var srec=document.getElementById('cir-sum-rec');
+  if(srEl) srEl.innerText='REGISTROS: '+data.length;
+  if(scEl) scEl.innerText='Σ CANTIDAD: '+sC.toLocaleString('es-MX');
+  if(skEl) skEl.innerText='Σ KILOS: '+sK.toLocaleString('es-MX');
+  if(srec) srec.innerText='Σ RECIBIDO: '+sR.toLocaleString('es-MX');
+}
+function _cirOpenFilter(el,idx) {
+  var opciones=[...new Set(_cir_filteredData.map(function(r){return String(r[idx]||'');}))].sort();
+  var sel=_cir_activeFilters[idx]||opciones;
+  Swal.fire({
+    title:'Filtrar columna',
+    html:'<div style="max-height:280px;overflow-y:auto;text-align:left">'+opciones.map(function(o){
+      return '<div style="padding:4px 0"><label style="cursor:pointer"><input type="checkbox" value="'+o+'" '+(sel.includes(o)?'checked':'')+' class="cir-flt-chk me-2">'+o+'</label></div>';
+    }).join('')+'</div>',
+    showCancelButton:true,confirmButtonText:'Aplicar',confirmButtonColor:'#1565c0',cancelButtonText:'Limpiar',
+    preConfirm:function(){ return Array.from(document.querySelectorAll('.cir-flt-chk:checked')).map(function(c){return c.value;}); }
+  }).then(function(res){
+    if(res.isDismissed){ delete _cir_activeFilters[idx]; } else if(res.isConfirmed){ _cir_activeFilters[idx]=res.value.length?res.value:opciones; }
+    _cirRenderFinal();
+  });
+}
+
+async function _cirExportarExcel() {
+  if (typeof ExcelJS === 'undefined') {
+    Swal.fire('Error', 'Librería ExcelJS no disponible.', 'error');
+    return;
+  }
+
+  // Aplicar filtros activos
+  var data = _cir_filteredData.filter(function(r) {
+    return Object.keys(_cir_activeFilters).every(function(k) {
+      return _cir_activeFilters[k].includes(String(r[k] || ''));
+    });
+  });
+
+  if (!data.length) {
+    Swal.fire('Info', 'No hay datos para exportar.', 'info');
+    return;
+  }
+
+  showLoader('GENERANDO EXCEL CON FORMATO PROFESIONAL...');
+
+  try {
+    var headers = _cir_dbRaw[0] || [];
+    var cols = _cir_colsToShow;
+    var colNames = cols.map(function(i) {
+      return headers[i] ? String(headers[i]).toUpperCase() : 'COL' + i;
+    });
+
+    await _cirGenerarExcelProfesional(data, cols, colNames, 'Reporte_Circulante');
+  } catch(e) {
+    hideLoader();
+    Swal.fire('Error', 'Error al generar Excel: ' + e, 'error');
+  }
+}
+
+async function _cirGenerarExcelProfesional(data, cols, colNames, nombreArchivo) {
+
+  // ── Índices fijos en el array de datos (según estructura de CIRCULANTE)
+  var IDX = {
+    FECHA     : 1,
+    ENVIO     : 2,
+    CODIGO    : 3,
+    DESC      : 4,
+    DIAMETRO  : 5,
+    LARGO     : 6,
+    ACERO     : 7,
+    PEDIDO    : 8,
+    ORIGEN    : 9,
+    CANTIDAD  : 10,
+    UNIDAD    : 11,
+    KILOS     : 12,
+    KILOS_REC : 13,
+    MES       : 14,
+    ANIO      : 15,
+    DIFERENCIA: 16,
+    COMENTARIOS:17,
+    MOVIMIENTO: 18
+  };
+
+  // ── PALETA
+  var C = {
+    azulOscuro  : 'FF1A237E',
+    azulMedio   : 'FF1565C0',
+    azulClaro   : 'FFE3F2FD',
+    verdeOscuro : 'FF1B5E20',
+    verdeMedio  : 'FF2E7D32',
+    verdeClaro  : 'FFE8F5E9',
+    naranjaOsc  : 'FFE65100',
+    naranjaClaro: 'FFFFF3E0',
+    grisMedio   : 'FF455A64',
+    grisClaro   : 'FFF8FAFC',
+    grisLinea   : 'FFE2E8F0',
+    blanco      : 'FFFFFFFF',
+    totalBg     : 'FF0D47A1',
+    textoOsc    : 'FF0F172A',
+  };
+
+  // Color por tipo de movimiento
+  function colorPorMov(mov) {
+    var m = String(mov || '').toUpperCase();
+    if (m.includes('ALAMBRE'))   return { titulo: 'FF1B5E20', header: 'FF2E7D32', par: 'FFE8F5E9' };
+    if (m.includes('MAQUILA'))   return { titulo: 'FF0D47A1', header: 'FF1565C0', par: 'FFE3F2FD' };
+    if (m.includes('ACEITE'))    return { titulo: 'FF4A148C', header: 'FF6A1B9A', par: 'FFF3E5F5' };
+    if (m.includes('REPROC'))    return { titulo: 'FFE65100', header: 'FFF4511E', par: 'FFFFF3E0' };
+    if (m.includes('DEVOL'))     return { titulo: 'FFB71C1C', header: 'FFC62828', par: 'FFFCE4EC' };
+    if (m.includes('ETSA') || m.includes('ENTRADA')) return { titulo: 'FF006064', header: 'FF00838F', par: 'FFE0F7FA' };
+    if (m.includes('ROOFING'))   return { titulo: 'FF37474F', header: 'FF546E7A', par: 'FFECEFF1' };
+    return                               { titulo: 'FF4E342E', header: 'FF6D4C41', par: 'FFEFEBE9' };
+  }
+
+  // Borde fino en todas las celdas de una fila
+  function borde(row, n) {
+    for (var c = 1; c <= n; c++) {
+      row.getCell(c).border = {
+        top: { style:'thin', color:{ argb: C.grisLinea } },
+        left: { style:'thin', color:{ argb: C.grisLinea } },
+        bottom: { style:'thin', color:{ argb: C.grisLinea } },
+        right: { style:'thin', color:{ argb: C.grisLinea } }
+      };
+    }
+  }
+
+  // Índices de columnas numéricas para formatear
+  var numericCols = [IDX.CANTIDAD, IDX.KILOS, IDX.KILOS_REC, IDX.DIFERENCIA];
+
+  // Función para agregar una hoja de datos
+  function agregarHojaDatos(wb, datos, nombreHoja, coloresHoja) {
+    var ws = wb.addWorksheet(nombreHoja, { views:[{ showGridLines:false }] });
+    var n = cols.length;
+
+    // Anchos de columna basados en nombre
+    ws.getColumn(1).width = 14;  // default
+    cols.forEach(function(colIdx, pos) {
+      var w = 12;
+      var nm = colNames[pos];
+      if (nm.includes('DESC') || nm.includes('DESCRIPCION')) w = 28;
+      else if (nm.includes('ENVIO') || nm.includes('PEDIDO') || nm.includes('ORIGEN')) w = 16;
+      else if (nm.includes('FECHA')) w = 13;
+      else if (nm.includes('CODIGO')) w = 14;
+      else if (nm.includes('COMENTARIO')) w = 22;
+      else if (nm.includes('MOVIMIENTO')) w = 18;
+      ws.getColumn(pos + 1).width = w;
+    });
+
+    // — Título —
+    ws.mergeCells(1, 1, 2, n);
+    var tit = ws.getCell('A1');
+    tit.value     = 'TOOL CN  ·  INVENTARIO CIRCULANTE  ·  ' + nombreHoja.toUpperCase();
+    tit.font      = { bold:true, size:13, color:{ argb: C.blanco } };
+    tit.alignment = { horizontal:'center', vertical:'middle' };
+    tit.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: coloresHoja.titulo } };
+    ws.getRow(1).height = 30;
+    ws.getRow(2).height = 30;
+
+    // — Subtítulo —
+    ws.mergeCells(3, 1, 3, n);
+    var sub = ws.getCell(3, 1);
+    sub.value     = 'Registros: ' + datos.length + '   |   Generado: ' + new Date().toLocaleString('es-MX');
+    sub.font      = { italic:true, size:9, color:{ argb:'FF64748B' } };
+    sub.alignment = { horizontal:'right', vertical:'middle' };
+    sub.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFEEF2FF' } };
+    ws.getRow(3).height = 16;
+
+    // — Encabezados —
+    var hRow = ws.addRow(colNames);
+    hRow.height = 20;
+    hRow.eachCell(function(cell) {
+      cell.font      = { bold:true, size:10, color:{ argb: C.blanco } };
+      cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: coloresHoja.header } };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+      cell.border    = { bottom:{ style:'medium', color:{ argb: coloresHoja.titulo } } };
+    });
+
+    // — Filas de datos —
+    var totKilos = 0, totKilosRec = 0, totCantidad = 0;
+    datos.forEach(function(r, idx) {
+      var fila = cols.map(function(i) { return r[i]; });
+      var row = ws.addRow(fila);
+      row.height = 17;
+      var bg = idx % 2 === 0 ? coloresHoja.par : C.blanco;
+
+      cols.forEach(function(colIdx, pos) {
+        var cell = row.getCell(pos + 1);
+        cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: bg } };
+        cell.alignment = { vertical:'middle' };
+        // Formato numérico entero
+        if (numericCols.indexOf(colIdx) > -1) {
+          var val = Math.round(Number(r[colIdx] || 0));
+          cell.value     = val;
+          cell.numFmt    = '#,##0';
+          cell.font      = { bold:true, color:{ argb: coloresHoja.header }, size:10 };
+          cell.alignment = { horizontal:'right', vertical:'middle' };
+        }
+      });
+      borde(row, n);
+
+      totKilos    += Math.round(Number(r[IDX.KILOS] || 0));
+      totKilosRec += Math.round(Number(r[IDX.KILOS_REC] || 0));
+      totCantidad += Math.round(Number(r[IDX.CANTIDAD] || 0));
+    });
+
+    // — Fila Total —
+    var filaTot = new Array(n).fill('');
+    // Buscar posición de columnas clave dentro del array cols
+    var posCant = cols.indexOf(IDX.CANTIDAD);
+    var posKg   = cols.indexOf(IDX.KILOS);
+    var posKgR  = cols.indexOf(IDX.KILOS_REC);
+    if (posCant > -1) filaTot[posCant] = totCantidad;
+    if (posKg   > -1) filaTot[posKg]   = totKilos;
+    if (posKgR  > -1) filaTot[posKgR]  = totKilosRec;
+
+    // Insertar etiqueta TOTAL en primera columna
+    filaTot[0] = 'TOTAL (' + datos.length + ' reg)';
+
+    var totRow = ws.addRow(filaTot);
+    totRow.height = 22;
+    totRow.eachCell(function(cell, pos) {
+      cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: C.totalBg } };
+      cell.font      = { bold:true, size:11, color:{ argb: C.blanco } };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+    // Numéricos en la fila total
+    [posCant, posKg, posKgR].forEach(function(p) {
+      if (p < 0) return;
+      var cell = totRow.getCell(p + 1);
+      cell.numFmt   = '#,##0';
+      cell.alignment = { horizontal:'right', vertical:'middle' };
+    });
+  }
+
+
+  // ══════════════════════════════════════════════
+  //  CREAR LIBRO
+  // ══════════════════════════════════════════════
+  var workbook = new ExcelJS.Workbook();
+  workbook.creator = 'TOOL CN';
+  workbook.created = new Date();
+
+  // — Obtener tipos de movimiento únicos —
+  var tiposMovimiento = [];
+  data.forEach(function(r) {
+    var m = String(r[IDX.MOVIMIENTO] || 'OTROS').trim().toUpperCase();
+    if (tiposMovimiento.indexOf(m) === -1) tiposMovimiento.push(m);
+  });
+  tiposMovimiento.sort();
+
+  // ══════════════════════════════════════════════
+  //  HOJA RESUMEN — se crea PRIMERO para que quede
+  //  como primera pestaña del libro
+  // ══════════════════════════════════════════════
+  var wsRes = workbook.addWorksheet('RESUMEN', { views:[{ showGridLines:false }] });
+  wsRes.getColumn(1).width = 22;  // Movimiento
+  wsRes.getColumn(2).width = 14;  // Registros
+  wsRes.getColumn(3).width = 16;  // Total Cantidad
+  wsRes.getColumn(4).width = 16;  // Total Kilos
+  wsRes.getColumn(5).width = 18;  // Total Kilos Rec
+
+  // — Título Resumen —
+  wsRes.mergeCells('A1:E2');
+  var tRes = wsRes.getCell('A1');
+  tRes.value     = 'TOOL CN  ·  RESUMEN DE MOVIMIENTOS CIRCULANTE  ·  ' + new Date().getFullYear();
+  tRes.font      = { bold:true, size:14, color:{ argb: C.blanco } };
+  tRes.alignment = { horizontal:'center', vertical:'middle' };
+  tRes.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: C.azulOscuro } };
+  wsRes.getRow(1).height = 32;
+  wsRes.getRow(2).height = 32;
+
+  // — Subtítulo —
+  wsRes.mergeCells('A3:E3');
+  var sRes = wsRes.getCell('A3');
+  sRes.value     = 'Total registros exportados: ' + data.length + '   |   Generado: ' + new Date().toLocaleString('es-MX');
+  sRes.font      = { italic:true, size:9, color:{ argb:'FF64748B' } };
+  sRes.alignment = { horizontal:'right', vertical:'middle' };
+  sRes.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb:'FFEEF2FF' } };
+  wsRes.getRow(3).height = 16;
+
+  // — Encabezados Resumen —
+  var hRes = wsRes.addRow(['TIPO DE MOVIMIENTO', 'REGISTROS', 'CANTIDAD TOTAL', 'KILOS TOTAL', 'KILOS REC. TOTAL']);
+  hRes.height = 22;
+  hRes.eachCell(function(cell) {
+    cell.font      = { bold:true, size:10, color:{ argb: C.blanco } };
+    cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: C.azulMedio } };
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+    cell.border    = { bottom:{ style:'medium', color:{ argb:'FF0D47A1' } } };
+  });
+
+  // — Filas por movimiento en resumen —
+  var grandTotReg = 0, grandTotCant = 0, grandTotKg = 0, grandTotKgR = 0;
+  var coloresRes = [C.azulClaro, C.blanco];
+
+  tiposMovimiento.forEach(function(tipo, idx) {
+    var datosMov = data.filter(function(r) {
+      return String(r[IDX.MOVIMIENTO] || 'OTROS').trim().toUpperCase() === tipo;
+    });
+    var totCant = 0, totKg = 0, totKgR = 0;
+    datosMov.forEach(function(r) {
+      totCant += Math.round(Number(r[IDX.CANTIDAD] || 0));
+      totKg   += Math.round(Number(r[IDX.KILOS] || 0));
+      totKgR  += Math.round(Number(r[IDX.KILOS_REC] || 0));
+    });
+    grandTotReg  += datosMov.length;
+    grandTotCant += totCant;
+    grandTotKg   += totKg;
+    grandTotKgR  += totKgR;
+
+    var colores = colorPorMov(tipo);
+    var row = wsRes.addRow([tipo, datosMov.length, totCant, totKg, totKgR]);
+    row.height = 20;
+    var bg = coloresRes[idx % 2];
+    row.eachCell(function(cell) {
+      cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: bg } };
+      cell.alignment = { horizontal:'center', vertical:'middle' };
+    });
+    // Nombre del movimiento: bold + color del tipo
+    row.getCell(1).font      = { bold:true, color:{ argb: colores.titulo }, size:11 };
+    row.getCell(1).alignment = { horizontal:'left', vertical:'middle' };
+    // Numéricos bold + color
+    [3,4,5].forEach(function(pos) {
+      row.getCell(pos).numFmt    = '#,##0';
+      row.getCell(pos).font      = { bold:true, color:{ argb: C.azulMedio }, size:10 };
+      row.getCell(pos).alignment = { horizontal:'right', vertical:'middle' };
+    });
+    // Borde
+    for (var c = 1; c <= 5; c++) {
+      row.getCell(c).border = {
+        top: { style:'thin', color:{ argb: C.grisLinea } },
+        left: { style:'thin', color:{ argb: C.grisLinea } },
+        bottom: { style:'thin', color:{ argb: C.grisLinea } },
+        right: { style:'thin', color:{ argb: C.grisLinea } }
+      };
+    }
+  });
+
+  // — Fila TOTAL GLOBAL —
+  var totGlobal = wsRes.addRow(['TOTAL GLOBAL', grandTotReg, grandTotCant, grandTotKg, grandTotKgR]);
+  totGlobal.height = 26;
+  totGlobal.eachCell(function(cell) {
+    cell.fill      = { type:'pattern', pattern:'solid', fgColor:{ argb: C.totalBg } };
+    cell.font      = { bold:true, size:12, color:{ argb: C.blanco } };
+    cell.alignment = { horizontal:'center', vertical:'middle' };
+  });
+  totGlobal.getCell(1).alignment = { horizontal:'left', vertical:'middle' };
+  [3,4,5].forEach(function(pos) {
+    totGlobal.getCell(pos).numFmt    = '#,##0';
+    totGlobal.getCell(pos).alignment = { horizontal:'right', vertical:'middle' };
+  });
+
+  // — Una hoja por tipo de movimiento (van después del RESUMEN) —
+  tiposMovimiento.forEach(function(tipo) {
+    var datosMov = data.filter(function(r) {
+      return String(r[IDX.MOVIMIENTO] || 'OTROS').trim().toUpperCase() === tipo;
+    });
+    var colores = colorPorMov(tipo);
+    var nombreHoja = tipo.substring(0, 31);
+    agregarHojaDatos(workbook, datosMov, nombreHoja, colores);
+  });
+
+  // ══════════════════════════════════════════════
+  //  DESCARGAR
+  // ══════════════════════════════════════════════
+  var buffer = await workbook.xlsx.writeBuffer();
+  var blob   = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var a      = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = nombreArchivo + '_' + new Date().getFullYear() + '.xlsx';
+  a.click();
+
+  hideLoader();
+  Swal.fire({
+    icon:'success', title:'¡Listo!',
+    html:'Excel generado con <strong>' + tiposMovimiento.length + ' hojas</strong> de movimientos + hoja RESUMEN.',
+    timer:2200, showConfirmButton:false
+  });
+}
+
+// ── Catálogo
+function _cirAbrirModalCat(preFillCod) {
+  _cirRenderCatalogo(_cir_catalogo.slice(1));
+  document.getElementById('cir-modal-cat').style.display='flex';
+  if(preFillCod){
+    _cirPreparFormCat('NUEVO',null);
+    document.getElementById('f-cir-cod').value=preFillCod;
+    document.getElementById('f-cir-des').focus();
+  }
+}
+function _cirRenderCatalogo(datos) {
+  var tbody=document.getElementById('cir-cat-list-body'); if(!tbody) return;
+  tbody.innerHTML=datos.map(function(row){
+    return '<tr><td>'+row[0]+'</td><td class="fw-bold">'+row[1]+'</td><td>'+row[2]+'</td>'
+      +'<td>'+row[3]+'</td><td>'+row[4]+'</td><td>'+row[5]+'</td><td>'+row[6]+'</td>'
+      +'<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="_cirPreparFormCat(\'EDITAR\','+JSON.stringify(row).replace(/"/g,"'")+',[\''+row.join("','")+'\'])">✎</button></td></tr>';
+  }).join('');
+}
+function _cirFiltrarCatalogo() {
+  var val=(document.getElementById('cir-cat-search').value||'').toLowerCase();
+  var filtered=_cir_catalogo.slice(1).filter(function(r){ return r.join(' ').toLowerCase().includes(val); });
+  _cirRenderCatalogo(filtered);
+}
+function _cirPreparFormCat(modo,row) {
+  var form=document.getElementById('cir-form-cat'); form.classList.remove('d-none');
+  if(modo==='NUEVO'){
+    document.getElementById('cir-form-cat-title').innerText='🆕 NUEVO CÓDIGO';
+    document.getElementById('f-cir-id').value='NUEVO';
+    ['cod','des','dia','lar','ace'].forEach(function(f){ document.getElementById('f-cir-'+f).value=''; });
+    document.getElementById('f-cir-uni').value='KILOS';
+  } else {
+    document.getElementById('cir-form-cat-title').innerText='✎ EDITAR ID: '+row[0];
+    document.getElementById('f-cir-id').value=row[0];
+    document.getElementById('f-cir-cod').value=row[1];
+    document.getElementById('f-cir-des').value=row[2];
+    document.getElementById('f-cir-dia').value=row[3];
+    document.getElementById('f-cir-lar').value=row[4];
+    document.getElementById('f-cir-ace').value=row[5];
+    document.getElementById('f-cir-uni').value=row[6]||'KILOS';
+  }
+}
+function _cirGuardarItemCat() {
+  var item={id:document.getElementById('f-cir-id').value,codigo:document.getElementById('f-cir-cod').value,
+    descripcion:document.getElementById('f-cir-des').value,diametro:document.getElementById('f-cir-dia').value,
+    largo:document.getElementById('f-cir-lar').value,acero:document.getElementById('f-cir-ace').value,
+    unidad:document.getElementById('f-cir-uni').value};
+  if(!item.codigo||!item.descripcion){Swal.fire('Error','Código y Descripción son obligatorios.','error');return;}
+  showLoader('Guardando catálogo...');
+  google.script.run
+    .withSuccessHandler(function(){
+      google.script.run.withSuccessHandler(function(res){
+        hideLoader(); _cir_catalogo=res.catalogo||[]; _cirRenderCatalogo(_cir_catalogo.slice(1));
+        document.getElementById('cir-form-cat').classList.add('d-none');
+        Swal.fire({icon:'success',title:'Catálogo actualizado',timer:1500,showConfirmButton:false});
+      }).getDatosIniciales();
+    })
+    .withFailureHandler(function(e){ hideLoader(); Swal.fire('Error',''+e,'error'); })
+    .crudCatalogo(item);
+}
+
+// ══════════════════════════════════════════════════════════
+//  USUARIOS
+// ══════════════════════════════════════════════════════════
+var PERMISOS_LIST_EMB = [
+  {perm:'E_Dash',       label:'Dashboard'},
+  {perm:'E_Tablero',    label:'Tablero Métricas'},
+  {perm:'E_Despachos',  label:'Despachos'},
+  {perm:'E_Envios',     label:'Envíos'},
+  {perm:'E_Existencia', label:'Existencia Alambrón'},
+  {perm:'E_GestionMP',  label:'Gestión MP'},
+  {perm:'E_Circulante', label:'Circulante'},
+  {perm:'E_Users',      label:'Usuarios (Admin)'}
+];

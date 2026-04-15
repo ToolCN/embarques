@@ -1,0 +1,423 @@
+function loadDespachos(diasSolicitados) {
+  var dias = diasSolicitados || 60;
+
+  // ── Si estamos en modo offline, usar datos locales ──
+  if (_offlineActivo()) {
+    _desp_sourceData = _offlineGetLotes();
+    _desp_loadedDias = 90;
+    if (!window._despModalEdit)
+      window._despModalEdit = new bootstrap.Modal(document.getElementById('despModalEdit'));
+    _despActualizarCombo(90);
+    _despResetPaginacion();
+    renderDespachos();
+    _offlineRenderBarra();
+    return;
+  }
+
+  // ── Modo normal (online) ──
+  if (dias <= _desp_loadedDias && _desp_loadedDias > 0) {
+    renderDespachos();
+    return;
+  }
+  showLoader('Cargando lotes (' + dias + ' días)...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoader();
+      var nuevos = Array.isArray(res) ? res : [];
+      if (dias > _desp_loadedDias) {
+        if (_desp_loadedDias === 0) {
+          _desp_sourceData = nuevos;
+        } else {
+          var yaExisten = {};
+          for (var k = 0; k < _desp_sourceData.length; k++) yaExisten[_desp_sourceData[k].lote] = true;
+          for (var j = 0; j < nuevos.length; j++) {
+            if (!yaExisten[nuevos[j].lote]) _desp_sourceData.push(nuevos[j]);
+          }
+        }
+        _desp_loadedDias = dias;
+      }
+      if (!window._despModalEdit)
+        window._despModalEdit = new bootstrap.Modal(document.getElementById('despModalEdit'));
+      _despActualizarCombo(dias);
+      _despResetPaginacion();
+      renderDespachos();
+      _offlineRenderBarra();
+    })
+    .withFailureHandler(function(e) {
+      hideLoader();
+      document.getElementById('content-area').innerHTML = _modErr('Despachos', 'obtenerLotesDisponibles', e);
+    })
+    .obtenerLotesDisponibles(dias);
+}
+
+function _despActualizarCombo(diasActivos) {
+  var sel = document.getElementById('desp-dias-sel');
+  if (sel) sel.value = String(diasActivos);
+}
+
+function _despCambiarDias() {
+  var sel  = document.getElementById('desp-dias-sel');
+  var dias = sel ? parseInt(sel.value) : 60;
+  _desp_searchCache = ''; // forzar re-render
+  loadDespachos(dias);
+}
+
+function _despResetPaginacion() {
+  _desp_visibles    = _DESP_PAGE_SIZE;
+  _desp_searchCache = '';
+}
+
+function renderDespachos() {
+  var html = '<div class="modulo-inline">'
+    +'<div class="modulo-toolbar">'
+    +'<i class="fas fa-shipping-fast text-white opacity-75"></i>'
+    +'<span class="text-white fw-bold">DESPACHOS — MESA DE CONTROL</span>'
+    +'<div class="ms-auto d-flex gap-2 align-items-center">'
+    +'<input type="text" class="form-control form-control-sm" placeholder="Buscar lote, pedido..." id="desp-q" oninput="_despDebounceBuscar()" style="max-width:200px">'
+    +'<select id="desp-dias-sel" class="form-select form-select-sm fw-bold" style="max-width:130px;background:#1e40af;color:#fff;border:none" onchange="_despCambiarDias()">'
+    +'<option value="60">60 días</option>'
+    +'<option value="90">90 días</option>'
+    +'<option value="120">120 días</option>'
+    +'<option value="150">150 días</option>'
+    +'<option value="180">180 días</option>'
+    +'</select>'
+    +_offlineBotonHTML()
+    +'<button class="btn btn-sm btn-light fw-bold" onclick="_desp_loadedDias=0;_desp_sourceData=[];loadDespachos(parseInt(document.getElementById(\'desp-dias-sel\').value||\'60\'))"><i class="fas fa-sync-alt me-1"></i>Recargar</button>'
+    +'</div></div>'
+    +'<div class="modulo-body">'
+    +'<div class="row g-3">'
+    // Cola
+    +'<div class="col-12 col-lg-5">'
+    +'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;height:100%">'
+    +'<div class="d-flex align-items-center justify-content-between mb-2">'
+    +'<strong style="color:#166534;font-size:.85rem"><i class="fas fa-print me-2"></i>COLA DE IMPRESIÓN</strong>'
+    +'<span class="badge bg-success" id="desp-cnt-cola">0</span></div>'
+    +'<div style="max-height:380px;overflow-y:auto" id="desp-tbl-cola-wrap"></div>'
+    +'<button class="btn btn-success w-100 fw-bold mt-3 py-2" onclick="_despImprimirFinal()" id="desp-btn-imprimir" disabled>'
+    +'<i class="fas fa-print me-2"></i>GENERAR ETIQUETAS Y MARCAR ENVIADOS</button>'
+    +'</div></div>'
+    // Tabla fuente
+    +'<div class="col-12 col-lg-7">'
+    +'<div style="overflow-x:auto;max-height:460px;overflow-y:auto" id="desp-source-wrap" onscroll="_despOnScroll()">'
+    +'<table class="tbl-emb" id="desp-tbl-source">'
+    +'<thead style="position:sticky;top:0;z-index:2"><tr><th>#</th><th>LOTE</th><th>PEDIDO</th><th>CÓDIGO</th><th>DESCRIPCIÓN</th><th>ESTATUS</th><th></th></tr></thead>'
+    +'<tbody id="desp-tbody-source"></tbody>'
+    +'</table>'
+    +'<div id="desp-load-more" style="text-align:center;padding:8px;font-size:.78rem;color:#64748b;display:none">Cargando más filas...</div>'
+    +'</div>'
+    +'<div class="mt-1" style="font-size:.72rem;color:#94a3b8;text-align:right" id="desp-count-lbl"></div>'
+    +'</div>'
+    +'</div></div></div>';
+
+  document.getElementById('content-area').innerHTML = html;
+
+  // Inicializar combo en el valor actual
+  _despActualizarCombo(_desp_loadedDias || 60);
+
+  _despRenderFuente();
+  _despRenderCola();
+}
+
+function _despGetByLote(lote) {
+  for (var i = 0; i < _desp_sourceData.length; i++) if (_desp_sourceData[i].lote === lote) return _desp_sourceData[i];
+  for (var j = 0; j < _desp_queueData.length;  j++) if (_desp_queueData[j].lote  === lote) return _desp_queueData[j];
+  return null;
+}
+
+function _despDebounceBuscar() {
+  clearTimeout(_despTimer);
+  _despTimer = setTimeout(function() {
+    _desp_visibles    = _DESP_PAGE_SIZE;  // reset paginación al buscar
+    _despRenderFuente();
+  }, 250);
+}
+
+// Scroll infinito: cuando el usuario llega al final cargamos más filas
+function _despOnScroll() {
+  var wrap = document.getElementById('desp-source-wrap');
+  if (!wrap) return;
+  // Si está a menos de 80px del fondo
+  if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 80) {
+    _despCargarMasFilas();
+  }
+}
+
+function _despCargarMasFilas() {
+  var q      = ((document.getElementById('desp-q')||{}).value||'').trim().toLowerCase();
+  var enCola = {};
+  for (var k = 0; k < _desp_queueData.length; k++) enCola[_desp_queueData[k].lote] = true;
+
+  var totalFiltrado = 0;
+  for (var i = 0; i < _desp_sourceData.length; i++) {
+    var r = _desp_sourceData[i];
+    if (enCola[r.lote]) continue;
+    if (q && (r.lote+' '+r.pedido+' '+r.codigo+' '+r.desc).toLowerCase().indexOf(q) === -1) continue;
+    totalFiltrado++;
+  }
+
+  if (_desp_visibles >= totalFiltrado) return; // ya mostramos todo
+
+  _desp_visibles = Math.min(_desp_visibles + _DESP_PAGE_SIZE, totalFiltrado);
+  _despRenderFuente(true); // modo "append" — no reconstruye, agrega
+}
+
+// mode: false = render completo, true = solo actualiza las filas extra
+function _despRenderFuente(append) {
+  var q = ((document.getElementById('desp-q')||{}).value||'').trim().toLowerCase();
+
+  if (!append) {
+    if (q === _desp_searchCache) return;
+    _desp_searchCache = q;
+  }
+
+  var tbody = document.getElementById('desp-tbody-source');
+  var lbl   = document.getElementById('desp-count-lbl');
+  var more  = document.getElementById('desp-load-more');
+  if (!tbody) return;
+
+  var enCola = {};
+  for (var k = 0; k < _desp_queueData.length; k++) enCola[_desp_queueData[k].lote] = true;
+
+  // Filtrar lista completa
+  var lista = [];
+  for (var i = 0; i < _desp_sourceData.length; i++) {
+    var r = _desp_sourceData[i];
+    if (enCola[r.lote]) continue;
+    if (q && (r.lote+' '+r.pedido+' '+r.codigo+' '+r.desc).toLowerCase().indexOf(q) === -1) continue;
+    lista.push(r);
+  }
+
+  var total   = lista.length;
+  var mostrar = Math.min(_desp_visibles, total);
+
+  if (!total) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">'
+      + (q ? 'Sin resultados para "'+q+'"' : 'Sin lotes disponibles') + '</td></tr>';
+    if (lbl)  lbl.textContent  = '';
+    if (more) more.style.display = 'none';
+    return;
+  }
+
+  // Colores de estatus
+  var stS = {
+    LISTO:    {bg:'#dcfce7',co:'#166534'},
+    IMPRIMIR: {bg:'#fef9c3',co:'#854d0e'},
+    IMPRESO:  {bg:'#dbeafe',co:'#1e40af'},
+    PENDIENTE:{bg:'#f1f5f9',co:'#475569'}
+  };
+
+  // Determinar desde dónde renderizar
+  var desde = append ? (tbody.rows.length) : 0;
+  var hasta = mostrar;
+
+  var rows = [];
+  for (var n = desde; n < hasta; n++) {
+    var r   = lista[n];
+    var st  = stS[r.estatus] || {bg:'#f1f5f9',co:'#475569'};
+    var lE  = r.lote.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    rows.push(
+      '<tr style="cursor:pointer" onclick="_despAbrirEdicion(\''+lE+'\')">'+
+      '<td class="text-muted">'+(n+1)+'</td>'+
+      '<td class="fw-bold" style="color:#1565c0">'+r.lote+'</td>'+
+      '<td>'+(r.pedido||'-')+'</td>'+
+      '<td>'+(r.codigo||'-')+'</td>'+
+      '<td style="font-size:.75rem">'+String(r.desc||'').substring(0,35)+'</td>'+
+      '<td><span style="background:'+st.bg+';color:'+st.co+';padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:700">'+r.estatus+'</span></td>'+
+      '<td><button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="event.stopPropagation();_despAgregarCola(\''+lE+'\')"><i class="fas fa-plus"></i></button></td>'+
+      '</tr>'
+    );
+  }
+
+  if (append) {
+    // Insertar filas nuevas sin tocar el DOM existente
+    var tmp = document.createElement('tbody');
+    tmp.innerHTML = rows.join('');
+    while (tmp.firstChild) tbody.appendChild(tmp.firstChild);
+  } else {
+    tbody.innerHTML = rows.join('');
+  }
+
+  if (lbl) lbl.textContent = 'Mostrando ' + mostrar + ' de ' + total + ' lotes';
+  if (more) more.style.display = (mostrar < total) ? 'block' : 'none';
+}
+
+function _despCalcNeto() {
+  var bruto = Math.round(parseFloat(document.getElementById('desp-inp-bruto').value) || 0);
+  var tPeso = Math.round(parseFloat(document.getElementById('desp-inp-tina-peso').value) || 0);
+  var neto  = Math.max(0, bruto - tPeso);
+  document.getElementById('desp-inp-kg').value = neto > 0 ? neto : '';
+}
+
+function _despRenderCola() {
+  var wrap = document.getElementById('desp-tbl-cola-wrap');
+  var cnt  = document.getElementById('desp-cnt-cola');
+  var btn  = document.getElementById('desp-btn-imprimir');
+  if(!wrap) return;
+  if(cnt) cnt.textContent = _desp_queueData.length;
+  if(btn) btn.disabled = !_desp_queueData.length;
+  if(!_desp_queueData.length) {
+    wrap.innerHTML = '<p class="text-muted text-center py-3" style="font-size:.82rem">Haz clic en + para agregar lotes</p>';
+    return;
+  }
+  wrap.innerHTML = '<table class="tbl-emb"><thead><tr><th>#</th><th>LOTE</th><th>NETO KG</th><th>TINA</th><th></th></tr></thead><tbody>'
+    + _desp_queueData.map(function(r,i){
+        var lE = r.lote.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return '<tr style="cursor:pointer" onclick="_despEditarEnCola(\''+lE+'\')">'
+          +'<td>'+(i+1)+'</td>'
+          +'<td class="fw-bold" style="color:#1565c0">'+r.lote+'</td>'
+          +'<td>'+(r.kg||'-')+'</td>'
+          +'<td>'+(r.tina||'-')+'</td>'
+          +'<td><button class="btn btn-sm btn-danger py-0 px-1" onclick="event.stopPropagation();_despQuitarCola(\''+lE+'\')" title="Quitar"><i class="fas fa-trash" style="font-size:.7rem"></i></button></td>'
+          +'</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+function _despAbrirEdicion(lote) {
+  var r = _despGetByLote(lote);
+  if(!r) return;
+  _desp_currentItem  = r;
+  _desp_editingQueue = _desp_queueData.some(function(c){ return c.lote===lote; });
+  _despLlenarModal(r);
+  document.getElementById('desp-btn-guardar').textContent = _desp_editingQueue ? 'GUARDAR CAMBIOS' : 'AGREGAR A LISTA';
+  window._despModalEdit.show();
+}
+
+function _despEditarEnCola(lote) {
+  // Abre modal para editar un item ya en la cola
+  var r = _despGetByLote(lote);
+  if(!r) return;
+  _desp_currentItem  = r;
+  _desp_editingQueue = true;
+  _despLlenarModal(r);
+  document.getElementById('desp-btn-guardar').textContent = 'GUARDAR CAMBIOS';
+  window._despModalEdit.show();
+}
+
+function _despAgregarCola(lote) {
+  var r = _despGetByLote(lote);
+  if(!r) return;
+  _desp_currentItem  = r;
+  _desp_editingQueue = false;
+  _despLlenarModal(r);
+  document.getElementById('desp-btn-guardar').textContent = 'AGREGAR A LISTA';
+  window._despModalEdit.show();
+}
+
+function _despLlenarModal(r) {
+  document.getElementById('desp-modal-info').innerHTML =
+    '<strong>'+r.lote+'</strong><br><small class="text-muted">'+r.desc+'</small>';
+  document.getElementById('desp-inp-bruto').value     = r.pesoBruto || '';
+  document.getElementById('desp-inp-tina-peso').value = (r.pesoTina !== undefined && r.pesoTina !== '') ? r.pesoTina : 0;
+  document.getElementById('desp-inp-kg').value        = r.kg        || '';
+  document.getElementById('desp-inp-tina').value      = r.tina      || '';
+  document.getElementById('desp-inp-sello').value     = r.sello     || '';
+}
+
+function _despGuardarEnCola() {
+  if(!_desp_currentItem) return;
+  var bruto = Math.round(parseFloat(document.getElementById('desp-inp-bruto').value));
+  var tPesoStr = document.getElementById('desp-inp-tina-peso').value;
+  var tPeso = (tPesoStr === '' || tPesoStr === null) ? 0 : Math.round(parseFloat(tPesoStr));
+  if(isNaN(tPeso)) tPeso = 0;
+  var tina  = document.getElementById('desp-inp-tina').value.toUpperCase();
+  var sello = document.getElementById('desp-inp-sello').value.toUpperCase();
+  if(!bruto || isNaN(bruto) || !tina) {
+    Swal.fire({icon:'warning',title:'Faltan datos',text:'Peso Bruto y Número de Tina son obligatorios.'});
+    return;
+  }
+  var neto = Math.max(0, bruto - tPeso);
+  _desp_currentItem.pesoBruto = bruto;
+  _desp_currentItem.pesoTina  = tPeso;
+  _desp_currentItem.kg        = neto;
+  _desp_currentItem.tina      = tina;
+  _desp_currentItem.sello     = sello;
+  if(!_desp_editingQueue) _desp_queueData.push(_desp_currentItem);
+  window._despModalEdit.hide();
+  _desp_currentItem = null;
+  _desp_searchCache = '';
+  _despRenderCola();
+  _despRenderFuente();
+}
+
+function _despQuitarCola(lote) {
+  // Elimina por lote (no por índice, que puede cambiar al renderizar)
+  _desp_queueData = _desp_queueData.filter(function(r){ return r.lote !== lote; });
+  _desp_searchCache = '';
+  _despRenderCola();
+  _despRenderFuente();
+}
+
+function _despImprimirFinal() {
+  if (!_desp_queueData.length) return;
+
+  if (_offlineActivo()) {
+    var pendientes = _offlineGetPendientes();
+    if (pendientes.length >= OFFLINE_LIMITE) {
+      Swal.fire({
+        title: '&#128683; L&#237;mite alcanzado',
+        html: 'Tienes <strong>' + pendientes.length + ' despachos</strong> sin sincronizar.<br>Conectate a internet y presiona <b>"Subir ahora"</b> antes de continuar.',
+        icon: 'error'
+      });
+      return;
+    }
+    var nuevos = _desp_queueData.slice();
+    var htmlEtiquetas = _offlineGenerarEtiquetasHTML(nuevos);
+    pendientes = pendientes.concat(nuevos.map(function(item) {
+      return {
+        lote: item.lote, tina: item.tina, kg: item.kg, sello: item.sello,
+        pesoBruto: item.pesoBruto || 0, pesoTina: item.pesoTina || 0,
+        ordenRef: item.ordenRef || '', ts: new Date().toISOString()
+      };
+    }));
+    _offlineSetPendientes(pendientes);
+    _desp_queueData = [];
+    _despRenderCola();
+    _offlineRenderBarra();
+    if (htmlEtiquetas) {
+      var win = window.open('', '_blank');
+      if (win) { win.document.write(htmlEtiquetas); win.document.close(); }
+    }
+    var impresosIds = nuevos.reduce(function(acc, x) { acc[x.lote] = true; return acc; }, {});
+    var lotesLocal  = _offlineGetLotes();
+    lotesLocal.forEach(function(l) { if (impresosIds[l.lote]) l.estatus = 'IMPRESO'; });
+    localStorage.setItem(OFFLINE_KEY_LOTES, JSON.stringify(lotesLocal));
+    _desp_sourceData = lotesLocal;
+    _despResetPaginacion();
+    _despRenderFuente();
+    Swal.fire({
+      title: '&#10003; Guardado sin conexi&#243;n',
+      html: nuevos.length + ' despacho(s) guardado(s) localmente.<br><small>Se subir&#225;n al conectarte y presionar "Subir ahora".</small>',
+      icon: 'success', timer: 3000, showConfirmButton: false
+    });
+    return;
+  }
+
+  Swal.fire({
+    icon: 'question',
+    title: '¿Generar etiquetas?',
+    text: 'Se imprimirán las etiquetas y los lotes serán marcados como enviados.',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, generar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#1a237e'
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+    showLoader('Procesando etiquetas...');
+    google.script.run
+      .withSuccessHandler(function(htmlContent) {
+        hideLoader();
+        var win = window.open('', '_blank');
+        if (win) { win.document.write(htmlContent); win.document.close(); }
+        _desp_queueData = [];
+        loadDespachos();
+      })
+      .withFailureHandler(function(e) { hideLoader(); Swal.fire('Error', '' + e, 'error'); })
+      .procesarYRenderizarEtiquetas(_desp_queueData);
+  });
+}
+// ══════════════════════════════════════════════════════════
+//  ENVÍOS — Editor, Importar Excel, Reporte Mensual
+// ══════════════════════════════════════════════════════════
+var _env_catalogo={}, _env_datosEditor=[], _env_datosOrig=[], _env_cambios=new Set(), _env_filtros={};
+var _env_datosImport=[], _env_rawReporte=[], _env_colFiltro='', _env_rowEditCode=null, _env_tabActual='editor';

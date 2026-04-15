@@ -1,0 +1,1030 @@
+function loadEnvios() {
+  _env_catalogo = {};
+  _env_tabActual = 'editor';
+  _envRenderUI();
+  _envBuscarDatos();
+}
+function _envRenderUI() {
+  var d=new Date(); d.setDate(d.getDate()-7);
+  var fIni=d.toISOString().split('T')[0];
+  var fFin=new Date().toISOString().split('T')[0];
+  var meses=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  var curM=new Date().getMonth();
+  var mesesHtml=meses.map(function(m,i){
+    var sel=i===curM;
+    return '<div class="env-month-check'+(sel?' selected':'')+'" data-idx="'+i+'" onclick="_envToggleMes(this)" style="padding:6px 12px;border:1px solid '+(sel?'#1a237e':'#ccc')+';border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;color:'+(sel?'white':'#555')+';background:'+(sel?'#1a237e':'white')+'">'+m+'</div>';
+  }).join('');
+
+  var html = '<div class="modulo-inline" style="display:flex;flex-direction:column;height:calc(100vh - 80px);min-height:unset">'
+    // Tabs
+    +'<div style="background:#f8fafc;border-bottom:2px solid #e2e8f0;padding:0 14px;flex-shrink:0">'
+    +'<ul class="nav nav-tabs border-0" style="gap:4px">'
+    +'<li class="nav-item"><button id="env-tab-editor" class="nav-link active fw-bold" style="color:#00695c;border-bottom:3px solid #00695c" onclick="_envNavTab(this.dataset.tab)" data-tab="editor"><i class="fas fa-edit me-1"></i>1. Editor</button></li>'
+    +'<li class="nav-item"><button id="env-tab-import" class="nav-link fw-bold" style="color:#64748b" onclick="_envNavTab(this.dataset.tab)" data-tab="import"><i class="fas fa-file-pdf me-1"></i>2. Importar PDF</button></li>'
+    +'<li class="nav-item"><button id="env-tab-report" class="nav-link fw-bold" style="color:#64748b" onclick="_envNavTab(this.dataset.tab)" data-tab="report"><i class="fas fa-chart-bar me-1"></i>3. Reporte Mensual</button></li>'
+    +'</ul></div>'
+
+    // ── PANEL EDITOR ──
+    +'<div id="env-sec-editor" style="flex:1;display:flex;flex-direction:column;overflow:hidden">'
+    +'<div style="padding:8px 14px;background:white;border-bottom:1px solid #f1f5f9;flex-shrink:0">'
+    +'<div class="d-flex gap-2 align-items-end flex-wrap">'
+    +'<div class="d-flex flex-column"><span style="font-size:10px;font-weight:900;color:#666">FECHA INICIO</span><input type="date" id="env-fIni" class="form-control form-control-sm" value="'+fIni+'"></div>'
+    +'<div class="d-flex flex-column"><span style="font-size:10px;font-weight:900;color:#666">FECHA FIN</span><input type="date" id="env-fFin" class="form-control form-control-sm" value="'+fFin+'"></div>'
+    +'<button class="btn btn-primary btn-sm fw-bold" onclick="_envBuscarDatos()">🔎 Consultar</button>'
+    +'<div id="env-stats-bar" style="font-size:12px;font-weight:700;color:#1565c0;background:#e3f2fd;padding:5px 10px;border-radius:4px">Resultados: 0</div>'
+    +'</div></div>'
+    +'<div style="flex:1;overflow:auto">'
+    +'<table class="tbl-emb" id="env-tbl-editor" style="min-width:1100px">'
+    +'<thead><tr>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="fecha" style="cursor:pointer;white-space:nowrap">FECHA ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="remision" style="cursor:pointer;white-space:nowrap">REMISION ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="pedido" style="cursor:pointer;white-space:nowrap">PEDIDO ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="codigo" style="cursor:pointer;white-space:nowrap">CODIGO ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="desc" style="cursor:pointer;white-space:nowrap">DESCRIPCION ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="familia" style="cursor:pointer;white-space:nowrap">FAMILIA ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="kilos" style="cursor:pointer;white-space:nowrap">KILOS ▾</th>'
+    +'<th onclick="_envAbrirFiltro(this.dataset.col)" data-col="piezas" style="cursor:pointer;white-space:nowrap">PIEZAS ▾</th>'
+    +'<th>COMENTARIOS</th><th>ENVIO</th><th style="width:36px">↩️</th>'
+    +'</tr></thead>'
+    +'<tbody id="env-tbody-editor"></tbody>'
+    +'</table></div>'
+    +'<button class="btn btn-success fw-bold" id="env-btn-save-editor" style="display:none;position:fixed;bottom:20px;right:30px;z-index:500;padding:10px 20px" onclick="_envGuardarEditor()">💾 GUARDAR TODO</button>'
+    +'</div>'
+
+    // ── PANEL IMPORTAR PDF ──
+    +'<div id="env-sec-import" style="flex:1;display:flex;flex-direction:column;overflow:hidden;display:none">'
+    +'<div style="padding:8px 14px;background:white;border-bottom:1px solid #f1f5f9;flex-shrink:0">'
+    +'<div class="d-flex gap-2 align-items-center flex-wrap">'
+    +'<label class="btn btn-primary btn-sm fw-bold mb-0"><i class="fas fa-file-pdf me-1"></i>Seleccionar PDF<input type="file" id="env-pdf-input" accept="application/pdf" class="d-none" onchange="_envProcesarPDF(this)"></label>'
+    +'<span id="env-pdf-nombre" style="font-size:11px;color:#555;font-weight:600"></span>'
+    +'<span id="env-pdf-status" style="font-size:11px;font-weight:700;color:#1565c0"></span>'
+    +'<button class="btn btn-sm fw-bold" id="env-btn-save-import" style="display:none;background:#1a237e;border-color:#1a237e;color:white" onclick="_envGuardarPDF()"><i class="fas fa-save me-1"></i>Guardar en BD</button>'
+    +'<span id="env-pdf-indicador" style="font-size:11px;margin-left:6px"></span>'
+    +'</div></div>'
+    +'<div style="flex:1;overflow:auto">'
+    +'<table class="tbl-emb" id="env-tbl-import" style="min-width:1400px">'
+    +'<thead><tr>'
+    +'<th style="width:35px">#</th>'
+    +'<th>FECHA</th><th>REMISION</th><th>KG_ENT</th>'
+    +'<th>PEDIDO</th><th>CODIGO</th><th>DESCRIPCION</th><th>FAMILIA</th>'
+    +'<th>KILOS</th><th>PIEZAS</th><th>COMENTARIOS</th><th>ENVIO</th>'
+    +'<th>COLADA</th><th>LOTE</th><th>CHOFER</th>'
+    +'<th style="width:30px"></th>'
+    +'</tr></thead>'
+    +'<tbody id="env-tbody-import"></tbody>'
+    +'</table></div></div>'
+
+    // ── PANEL REPORTE ──
+    +'<div id="env-sec-report" style="flex:1;display:flex;flex-direction:column;overflow:auto;padding:14px;display:none">'
+    +'<div style="background:white;padding:12px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:12px">'
+    +'<div style="font-size:10px;font-weight:900;color:#666;margin-bottom:6px">SELECCIONA MESES</div>'
+    +'<div class="d-flex flex-wrap gap-1 mb-2" id="env-month-grid">'+mesesHtml+'</div>'
+    +'<div class="d-flex gap-2">'
+    +'<button class="btn btn-primary btn-sm fw-bold" onclick="_envGenerarReporte()">📊 Generar</button>'
+    +'<button class="btn btn-success btn-sm fw-bold" id="env-btn-excel" style="display:none" onclick="_envDescargarExcel()">📥 Excel</button>'
+    +'<button class="btn btn-sm fw-bold" id="env-btn-tele" style="display:none;background:#0088cc;color:white" onclick="_envEnviarTelegram()">✈️ Telegram</button>'
+    +'</div></div>'
+    +'<div id="env-report-card" style="background:white;max-width:800px;border:1px solid #ccc;overflow:hidden;border-radius:4px">'
+    +'<div style="background:#1a237e;color:white;padding:15px;text-align:center"><div style="font-size:22px;font-weight:900">REPORTE DE ENVÍOS</div>'
+    +'<div style="font-size:13px;margin-top:4px;opacity:.9" id="env-rep-subtitle"></div></div>'
+    +'<div style="background:#e3f2fd;color:#1565c0;padding:6px 14px;font-weight:900;font-size:11px;border-bottom:2px solid #1565c0;text-transform:uppercase">DETALLE POR FAMILIA</div>'
+    +'<div id="env-rep-fam"></div>'
+    +'<div style="background:#424242;color:white;padding:6px 14px;font-weight:900;font-size:11px;border-bottom:2px solid black;text-transform:uppercase;margin-top:16px">RESUMEN SINTETIZADO</div>'
+    +'<div id="env-rep-cat"></div>'
+    +'<div style="padding:12px;background:#f0f0f0;font-weight:900;text-align:right;font-size:16px;border-top:2px solid #ccc" id="env-rep-total"></div>'
+    +'<div style="padding:8px 12px;font-size:11px;color:#555;display:flex;justify-content:space-between;background:white">'
+    +'<span id="env-rep-days"></span><span id="env-rep-avg"></span></div>'
+    +'</div></div>'
+
+    // Modal buscador código
+    +'</div>';
+  document.getElementById('content-area').innerHTML = html;
+  _envBuildModals();
+}
+
+function _envBuildModals() {
+  ['env-modal-code','env-modal-filtro'].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+  // Modal código
+  var mc=document.createElement('div');
+  mc.id='env-modal-code';
+  mc.style.cssText='display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.3);align-items:center;justify-content:center';
+  mc.innerHTML='<div style="background:white;border-radius:8px;width:400px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,.3)">'
+    +'<div style="padding:10px;border-bottom:1px solid #eee;font-weight:700;background:#f5f5f5">Buscar Código</div>'
+    +'<div style="padding:10px;border-bottom:1px solid #eee"><input type="text" id="env-txt-code" placeholder="Escribe código o descripción..." style="width:100%;padding:8px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px" onkeyup="_envFiltrarCodigos()"></div>'
+    +'<div style="flex:1;overflow-y:auto;padding:5px" id="env-list-codes"></div>'
+    +'<div style="padding:8px;text-align:right"><button class="btn btn-sm btn-secondary" onclick="_hideEl(this.dataset.mid)" data-mid="env-modal-code">Cancelar</button></div>'
+    +'</div>';
+  document.body.appendChild(mc);
+  // Modal filtro
+  var mf=document.createElement('div');
+  mf.id='env-modal-filtro';
+  mf.style.cssText='display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.3);align-items:center;justify-content:center';
+  mf.innerHTML='<div style="background:white;border-radius:8px;width:300px;max-height:500px;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,.3)">'
+    +'<div style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:700;background:#f5f5f5">Filtrar <span id="env-flt-col-lbl"></span></div>'
+    +'<div style="padding:8px;border-bottom:1px solid #eee"><input type="text" id="env-flt-search" style="width:100%;padding:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px" placeholder="Buscar..." onkeyup="_envFiltrarOpciones(this.value)"></div>'
+    +'<div style="padding:4px 10px;display:flex;gap:10px;border-bottom:1px solid #eee">'
+    +'<button style="background:none;border:none;color:#1976d2;cursor:pointer;font-size:12px;font-weight:700" onclick="_envToggleOpciones(true)">Todas</button>'
+    +'<button style="background:none;border:none;color:#1976d2;cursor:pointer;font-size:12px;font-weight:700" onclick="_envToggleOpciones(false)">Ninguna</button></div>'
+    +'<div id="env-flt-lista" style="flex:1;overflow-y:auto;padding:8px"></div>'
+    +'<div style="padding:8px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #eee">'
+    +'<button class="btn btn-sm btn-secondary" onclick="_hideEl(this.dataset.mid)" data-mid="env-modal-filtro">Cancelar</button>'
+    +'<button class="btn btn-sm btn-primary" onclick="_envAplicarFiltro()">Aplicar</button>'
+    +'</div></div>';
+  document.body.appendChild(mf);
+}
+
+function _envNavTab(tab) {
+  _env_tabActual=tab;
+  var tabs=['editor','import','report'];
+  tabs.forEach(function(t){
+    var btn=document.getElementById('env-tab-'+t);
+    var sec=document.getElementById('env-sec-'+t);
+    var isA=t===tab;
+    if(btn){btn.classList.toggle('active',isA);btn.style.color=isA?'#00695c':'#64748b';btn.style.borderBottom=isA?'3px solid #00695c':'';}
+    if(sec) sec.style.display=isA?'flex':'none';
+  });
+}
+
+
+function _hideEl(id) { var el=document.getElementById(id); if(el) el.style.display='none'; }
+function _envToggleMes(el) {
+  el.classList.toggle('selected');
+  var sel = el.classList.contains('selected');
+  el.style.background = sel ? '#1a237e' : 'white';
+  el.style.color = sel ? 'white' : '#555';
+  el.style.borderColor = sel ? '#1a237e' : '#ccc';
+}
+
+function _envFormatNum(n){return new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(n||0);}
+
+// ── EDITOR ──
+function _envBuscarDatos() {
+  var fi=document.getElementById('env-fIni');
+  var ff=document.getElementById('env-fFin');
+  if(!fi||!ff) return;
+  showLoader('Buscando envíos...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      _env_datosEditor=res||[];
+      _env_datosOrig=JSON.parse(JSON.stringify(_env_datosEditor));
+      _env_cambios=new Set();
+      _env_filtros={};
+      _envRenderEditor();
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .buscarEnvios(fi.value,ff.value);
+}
+
+function _envRenderEditor() {
+  var tbody=document.getElementById('env-tbody-editor'); if(!tbody) return;
+  var sumKg=0,sumPz=0;
+  var visible=_env_datosEditor.filter(function(row){
+    for(var col in _env_filtros){ if(_env_filtros[col].indexOf(String(row[col]))===-1) return false; }
+    return true;
+  });
+  tbody.innerHTML=visible.map(function(row){
+    sumKg+=Number(row.kilos); sumPz+=Number(row.piezas);
+    var mod=_env_cambios.has(row.id)?'background:#fff9c4':'';
+    return '<tr id="env-tr-'+row.id+'" style="'+mod+'">'
+      +'<td><input type="date" class="td-input-gmp" value="'+row.fecha+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="fecha"></td>'
+      +'<td><input class="td-input-gmp" value="'+row.remision+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="remision"></td>'
+      +'<td><input class="td-input-gmp" value="'+row.pedido+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="pedido"></td>'
+      +'<td><div style="display:flex;align-items:center"><input class="td-input-gmp" value="'+row.codigo+'" readonly style="background:#f5f5f5;color:#555;width:80px"><button style="background:#eee;border:1px solid #ccc;border-left:none;cursor:pointer;padding:3px 6px;font-size:11px" onclick="_envAbrirCodigo(this.dataset.rowid)" data-rowid="'+row.id+'">🔍</button></div></td>'
+      +'<td style="font-size:10px;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis">'+row.desc+'</td>'
+      +'<td style="font-size:10px">'+row.familia+'</td>'
+      +'<td><input class="td-input-gmp" type="text" value="'+_envFormatNum(row.kilos)+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="kilos" style="text-align:right"></td>'
+      +'<td><input class="td-input-gmp" type="text" value="'+_envFormatNum(row.piezas)+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="piezas" style="text-align:right"></td>'
+      +'<td><input class="td-input-gmp" value="'+row.comentarios+'" onchange="_envEditRowEvt(this)" data-rowid="'+row.id+'" data-field="comentarios"></td>'
+      +'<td><input class="td-input-gmp" value="'+row.envio+'" disabled style="color:#777"></td>'
+      +'<td><button style="background:#616161;border-radius:50%;width:28px;height:28px;border:none;color:white;cursor:pointer;'+(  _env_cambios.has(row.id)?'display:inline-flex':'display:none')+';align-items:center;justify-content:center;font-size:11px" onclick="_envDeshacer(this.dataset.rowid)" data-rowid="'+row.id+'">↩️</button></td>'
+      +'</tr>';
+  }).join('');
+  if(!visible.length) tbody.innerHTML='<tr><td colspan="11" class="text-center text-muted py-4">Sin resultados</td></tr>';
+  var sb=document.getElementById('env-stats-bar'); if(sb) sb.innerText='Regs: '+visible.length+' | Kilos: '+_envFormatNum(sumKg)+' | Piezas: '+_envFormatNum(sumPz);
+  var bs=document.getElementById('env-btn-save-editor'); if(bs) bs.style.display=_env_cambios.size>0?'block':'none';
+}
+
+function _envEditRow(id,field,val) {
+  var row=_env_datosEditor.find(function(r){return r.id==id;});
+  if(!row) return;
+  if(field=='kilos'||field=='piezas') val=Number(val.replace(/,/g,''))||0;
+  row[field]=val;
+  if(field==='kilos'){var info=_env_catalogo[row.codigo];if(info&&info.p>0)row.piezas=Math.round(val/info.p);}
+  _env_cambios.add(id);
+  _envRenderEditor();
+}
+
+function _envDeshacer(id) {
+  var orig=_env_datosOrig.find(function(r){return r.id==id;});
+  var idx=_env_datosEditor.findIndex(function(r){return r.id==id;});
+  if(orig&&idx>-1){_env_datosEditor[idx]=JSON.parse(JSON.stringify(orig));_env_cambios.delete(id);_envRenderEditor();}
+}
+
+function _envGuardarEditor() {
+  var lista=[];
+  _env_cambios.forEach(function(id){lista.push(_env_datosEditor.find(function(r){return r.id==id;}));});
+  showLoader('Guardando...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      Swal.fire({icon:'success',title:'¡Guardado!',html:res,timer:2000,showConfirmButton:false});
+      _env_datosOrig=JSON.parse(JSON.stringify(_env_datosEditor));
+      _env_cambios=new Set();
+      _envRenderEditor();
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .guardarCambiosEnvios(lista);
+}
+
+// ── CODIGO BUSCADOR ──
+function _envAbrirCodigo(rowId) {
+  _env_rowEditCode=rowId;
+  var el=document.getElementById('env-txt-code'); if(el){el.value='';el.focus();}
+  var lst=document.getElementById('env-list-codes'); if(lst) lst.innerHTML='';
+  var m=document.getElementById('env-modal-code'); if(m) m.style.display='flex';
+  setTimeout(function(){var el2=document.getElementById('env-txt-code');if(el2)el2.focus();},100);
+}
+
+function _envFiltrarCodigos() {
+  var txt=(document.getElementById('env-txt-code').value||'').toUpperCase();
+  if(txt.length<2) return;
+  var html=''; var count=0;
+  Object.keys(_env_catalogo).forEach(function(c){
+    if(count>50) return;
+    var d=(_env_catalogo[c].d||'').toUpperCase();
+    if(c.includes(txt)||d.includes(txt)){
+      html+='<div style="padding:8px 10px;border-bottom:1px solid #eee;cursor:pointer" onclick="_envSelCodigo(this.dataset.cod)" data-cod="'+c+'">'
+        +'<div style="font-weight:700;color:#1565c0;font-size:13px">'+c+'</div>'
+        +'<div style="font-size:11px;color:#555">'+_env_catalogo[c].d+'</div></div>';
+      count++;
+    }
+  });
+  var lst=document.getElementById('env-list-codes'); if(lst) lst.innerHTML=html||'<div style="padding:10px;color:#999">Sin resultados</div>';
+}
+
+function _envSelCodigo(codigo) {
+  if(_env_rowEditCode) {
+    var row=_env_datosEditor.find(function(r){return r.id==_env_rowEditCode;});
+    if(row){
+      row.codigo=codigo;
+      if(_env_catalogo[codigo]){row.desc=_env_catalogo[codigo].d;row.familia=_env_catalogo[codigo].f;
+        if(_env_catalogo[codigo].p>0&&row.kilos>0) row.piezas=Math.round(row.kilos/_env_catalogo[codigo].p);}
+      _env_cambios.add(_env_rowEditCode);
+      _envRenderEditor();
+    }
+  }
+  var m=document.getElementById('env-modal-code'); if(m) m.style.display='none';
+}
+
+// ── FILTROS EDITOR ──
+function _envAbrirFiltro(col) {
+  _env_colFiltro=col;
+  var vals=[...new Set(_env_datosEditor.map(function(r){return String(r[col]);}))].sort();
+  var sel=_env_filtros[col]||vals;
+  var lbl=document.getElementById('env-flt-col-lbl'); if(lbl) lbl.innerText=col.toUpperCase();
+  var lista=document.getElementById('env-flt-lista');
+  if(lista) lista.innerHTML=vals.map(function(v){
+    return '<label style="display:flex;align-items:center;gap:8px;padding:4px;cursor:pointer;font-size:12px">'
+      +'<input type="checkbox" value="'+v+'" '+(sel.includes(v)?'checked':'')+' class="env-flt-chk" style="accent-color:#1976d2"> <span>'+v+'</span></label>';
+  }).join('');
+  var m=document.getElementById('env-modal-filtro'); if(m) m.style.display='flex';
+}
+
+function _envFiltrarOpciones(txt) {
+  document.querySelectorAll('#env-flt-lista label').forEach(function(l){l.style.display=l.innerText.toLowerCase().includes(txt.toLowerCase())?'':'none';});
+}
+function _envToggleOpciones(st){
+  document.querySelectorAll('.env-flt-chk').forEach(function(i){i.checked=st;});
+}
+function _envAplicarFiltro() {
+  var chks=document.querySelectorAll('.env-flt-chk:checked');
+  var perm=[]; chks.forEach(function(c){perm.push(c.value);});
+  _env_filtros[_env_colFiltro]=perm;
+  _envRenderEditor();
+  var m=document.getElementById('env-modal-filtro'); if(m) m.style.display='none';
+}
+
+// ── IMPORTAR ──
+function _envProcesarExcel() {
+  var input=document.getElementById('env-file-upload');
+  if(!input||!input.files[0]){Swal.fire('Atención','Selecciona un archivo Excel.','warning');return;}
+  showLoader('Procesando Excel...');
+  if(typeof readXlsxFile==='undefined'){
+    // Fallback: usar XLSX
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        var sheet=wb.Sheets[wb.SheetNames[0]];
+        var rows=XLSX.utils.sheet_to_json(sheet,{header:1});
+        _envProcesarRowsImport(rows);
+      }catch(ex){hideLoader();Swal.fire('Error',''+ex,'error');}
+    };
+    reader.readAsArrayBuffer(input.files[0]);
+    return;
+  }
+  readXlsxFile(input.files[0]).then(function(rows){_envProcesarRowsImport(rows);});
+}
+
+function _envProcesarRowsImport(rows){
+  var headers=rows[0].map(function(h){return String(h).toUpperCase().trim();});
+  var gi=function(n){return headers.indexOf(n);};
+  var iFec=gi("FECHA"),iCod=gi("CODIGO"),iKg=gi("KILOS"),iKgE=gi("KG_ENTREGADOS");
+  var iPz=gi("PIEZAS"),iCom=gi("COMENTARIOS"),iEnv=gi("ENVIO"),iRem=gi("REMISION");
+  var iPed=gi("PEDIDO"),iDesc=gi("DESCRIPCION"),iFam=gi("FAMILIA");
+  if(iFec<0||iCod<0){hideLoader();Swal.fire('Error','Faltan columnas FECHA o CODIGO','error');return;}
+  var nuevos=[];
+  for(var i=1;i<rows.length;i++){
+    var r=rows[i];
+    if(!r[iFec]) continue;
+    var rawCod=String(r[iCod]).trim();
+    var cod=rawCod.padStart(9,'0');
+    var info=_env_catalogo[cod]||{d:'S/N',f:'S/N',p:0};
+    var kg=(iKg>-1)?(Number(r[iKg])||0):0;
+    var kgE=(iKgE>-1)?(Number(r[iKgE])||0):0;
+    var pz=(iPz>-1)?Number(r[iPz]):((info.p>0)?Math.round(kg/info.p):0);
+    var fecha=r[iFec];
+    if(fecha instanceof Date) fecha=fecha.toISOString().split('T')[0];
+    nuevos.push({fecha:fecha,remision:(iRem>-1)?r[iRem]:"",pedido:(iPed>-1)?r[iPed]:"",
+      codigo:cod,desc:(iDesc>-1&&r[iDesc])?r[iDesc]:info.d,familia:(iFam>-1&&r[iFam])?r[iFam]:info.f,
+      kilos:kg,kg_entregados:kgE,piezas:pz,comentarios:(iCom>-1)?(r[iCom]||""):"",envio:(iEnv>-1)?r[iEnv]:""});
+  }
+  _env_datosImport=nuevos;
+  _envRenderImport();
+  var bs=document.getElementById('env-btn-save-import'); if(bs) bs.style.display='block';
+  hideLoader();
+}
+
+function _envRenderImport() {
+  var tb=document.getElementById('env-tbody-import'); if(!tb) return;
+  tb.innerHTML=_env_datosImport.map(function(r){
+    return '<tr><td>'+r.fecha+'</td><td>'+r.remision+'</td><td>'+r.pedido+'</td><td>'+r.codigo+'</td>'
+      +'<td style="font-size:10px">'+r.desc+'</td><td style="font-size:10px">'+r.familia+'</td>'
+      +'<td style="text-align:right">'+_envFormatNum(r.kilos)+'</td>'
+      +'<td style="text-align:right">'+_envFormatNum(r.kg_entregados)+'</td>'
+      +'<td style="text-align:right">'+_envFormatNum(r.piezas)+'</td>'
+      +'<td>'+r.comentarios+'</td><td>'+r.envio+'</td></tr>';
+  }).join('');
+}
+
+function _envGuardarImport() {
+  showLoader('Guardando...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      Swal.fire({icon:'success',title:'¡Guardado!',html:res,timer:2000,showConfirmButton:false});
+      var tb=document.getElementById('env-tbody-import'); if(tb) tb.innerHTML='';
+      var bs=document.getElementById('env-btn-save-import'); if(bs) bs.style.display='none';
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .guardarNuevosEnvios(_env_datosImport);
+}
+
+// ══════════════════════════════════════════════════════════
+// IMPORTAR PDF — lógica completa
+// ══════════════════════════════════════════════════════════
+
+// Variables de estado para importar PDF
+var _pdfDatos = [];          // filas parseadas listas para editar/guardar
+var _pdfCatalogo = {};       // mapa codigo→{d,f,p} cargado desde GS
+var _pdfArchivoActual = null; // referencia al File del PDF seleccionado
+var _pdfBase64Actual  = null; // base64 del PDF leído al seleccionar
+var _pdfNombreActual  = null; // nombre del PDF seleccionado
+
+// Carga PDF.js dinámicamente si no está disponible
+function _pdfEnsureLib(cb) {
+  if (window.pdfjsLib) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload = function() {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    cb();
+  };
+  s.onerror = function() { Swal.fire('Error','No se pudo cargar PDF.js','error'); };
+  document.head.appendChild(s);
+}
+
+// Entrada principal cuando el usuario selecciona un archivo PDF
+function _envProcesarPDF(input) {
+  if (!input || !input.files[0]) return;
+  var archivo = input.files[0];
+  _pdfArchivoActual = archivo;
+  var spanNombre = document.getElementById('env-pdf-nombre');
+  var spanStatus = document.getElementById('env-pdf-status');
+  if (spanNombre) spanNombre.textContent = archivo.name;
+  if (spanStatus) spanStatus.textContent = 'Cargando...';
+
+  // Primero aseguramos tener el catálogo cargado
+  if (!Object.keys(_pdfCatalogo).length && _env_catalogo && Object.keys(_env_catalogo).length) {
+    _pdfCatalogo = _env_catalogo;
+  }
+
+  var leerYParsear = function() {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      // Guardar base64 para subirlo a Drive al guardar
+      var dataUrl = e.target.result;
+      _pdfBase64Actual = dataUrl.split(',')[1];
+      _pdfNombreActual = archivo.name.replace(/\s*\(\d+\)\s*/g, '').trim();
+      // Convertir a ArrayBuffer para PDF.js
+      var bin = atob(_pdfBase64Actual);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      var arrayBuffer = bytes.buffer;
+      _pdfEnsureLib(function() {
+        pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(function(pdfDoc) {
+          var totalPages = pdfDoc.numPages;
+          var textosPorPagina = [];
+          var promesas = [];
+          for (var p = 1; p <= totalPages; p++) {
+            (function(numPag) {
+              promesas.push(
+                pdfDoc.getPage(numPag).then(function(page) {
+                  return page.getTextContent().then(function(tc) {
+                    var items = tc.items.map(function(it) {
+                      return { str: it.str.trim(), x: Math.round(it.transform[4]), y: Math.round(it.transform[5]) };
+                    }).filter(function(it) { return it.str.length > 0; });
+                    textosPorPagina[numPag - 1] = items;
+                  });
+                })
+              );
+            })(p);
+          }
+          Promise.all(promesas).then(function() {
+            try {
+              var resultado = _pdfParsear(textosPorPagina);
+              _pdfDatos = resultado.filas;
+              if (spanStatus) spanStatus.textContent = resultado.filas.length + ' renglones encontrados';
+              _pdfRenderTabla();
+              // Mostrar botón guardar solo si hay filas
+              var btn = document.getElementById('env-btn-save-import');
+              if (btn) btn.style.display = _pdfDatos.length ? 'inline-block' : 'none';
+            } catch(err) {
+              if (spanStatus) spanStatus.textContent = 'Error al parsear';
+              Swal.fire('Error al parsear PDF', String(err), 'error');
+            }
+          });
+        }).catch(function(err) {
+          if (spanStatus) spanStatus.textContent = 'Error al leer PDF';
+          Swal.fire('Error', 'No se pudo leer el PDF: ' + err, 'error');
+        });
+      });
+    };
+    reader.readAsDataURL(archivo);
+  };
+
+  // Si el catálogo aún no está cargado, pedirlo a GS primero
+  if (!Object.keys(_pdfCatalogo).length) {
+    if (spanStatus) spanStatus.textContent = 'Cargando catálogo...';
+    google.script.run
+      .withSuccessHandler(function(res) {
+        _pdfCatalogo = res.catalogo || {};
+        _env_catalogo = _pdfCatalogo;
+        leerYParsear();
+      })
+      .withFailureHandler(function(e) {
+        Swal.fire('Error', 'No se pudo cargar el catálogo: ' + e, 'error');
+      })
+      .obtenerDatosEnvios();
+  } else {
+    leerYParsear();
+  }
+}
+
+// Parser principal: recibe array de items por página, devuelve { filas, meta }
+function _pdfParsear(textosPorPagina) {
+  // Juntamos todos los items de todas las páginas en una sola lista
+  var allItems = [];
+  textosPorPagina.forEach(function(items) { allItems = allItems.concat(items); });
+
+  var strs = allItems.map(function(it) { return it.str; });
+
+  // ── Extraer metadata del encabezado ──
+  var fecha = '';
+  var remision = '';
+  var kgEntregados = 0;
+  var tiendaOrigen = '';
+  var tiendaDestino = '';
+  var chofer = '';
+  var envioNum = '';
+
+  for (var i = 0; i < strs.length; i++) {
+    // FECHA: dd/MM/yyyy
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(strs[i]) && !fecha) {
+      fecha = strs[i];
+    }
+    // REMISION: etiqueta seguida del número
+    if (/^REMISION:?$/i.test(strs[i]) && !remision) {
+      remision = strs[i+1] ? String(strs[i+1]).trim() : '';
+    }
+    if (!envioNum) {
+      // Caso 1: token único "INT-29002"
+      if (/^INT-\d+$/.test(strs[i])) {
+        envioNum = strs[i];
+      }
+      // Caso 2: token con espacios "INT - 29002" o "INT -29002"
+      else if (/^INT\s*-\s*\d+$/.test(strs[i])) {
+        envioNum = strs[i].replace(/\s*/g,'');
+      }
+      // Caso 3: tres tokens separados INT + - + NNNNN
+      else if (strs[i] === 'INT' && strs[i+1] === '-' && strs[i+2] && /^\d{4,6}$/.test(strs[i+2])) {
+        envioNum = 'INT-' + strs[i+2];
+      }
+    }
+    // CHOFER
+    if (/^CHOFER:?$/i.test(strs[i]) && !chofer) {
+      chofer = strs[i+1] ? String(strs[i+1]).trim() : '';
+    }
+    if (/^CHOFER:\s+/i.test(strs[i]) && !chofer) {
+      chofer = strs[i].replace(/^CHOFER:\s*/i,'').trim();
+    }
+    // TIENDA DESTINO: solo capturamos [1] (destino), ignoramos [7] (origen)
+    if (/^\[1\]/i.test(strs[i]) && !tiendaDestino) {
+      // PDF.js puede entregar "[1] CLAVOS NACIONALES CN S.A. DE C.V." como un token largo
+      // o como tokens separados. Recolectamos hasta 8 tokens siguientes que no sean encabezados
+      var partesD = [strs[i]];
+      for (var td = i+1; td <= Math.min(strs.length-1, i+8); td++) {
+        if (/^\[/.test(strs[td]) || /^FECHA$/i.test(strs[td])) break;
+        partesD.push(strs[td]);
+      }
+      tiendaDestino = partesD.join(' ');
+    }
+  }
+
+  // Segundo bucle: patrones compuestos en un solo token
+  for (var i = 0; i < strs.length; i++) {
+    var mRem = strs[i].match(/REMISION[:\s]+(\d+)/i);
+    if (mRem && !remision) remision = mRem[1];
+    // KG_ENT: cubre todos los casos posibles que entrega PDF.js
+    // Caso A: "Kilos Entregados: 22,910" en un token
+    var mKgA = strs[i].match(/kilos\s+entregados[:\s]+([\d,]+)/i);
+    if (mKgA && !kgEntregados) kgEntregados = parseFloat(mKgA[1].replace(/,/g,''));
+    // Caso B: "Kilos Restantes: 22,910" en un token (mismo valor)
+    var mKgB = strs[i].match(/kilos\s+restantes[:\s]+([\d,]+)/i);
+    if (mKgB && !kgEntregados) kgEntregados = parseFloat(mKgB[1].replace(/,/g,''));
+    // Caso C: "Kilos Restantes:" solo (sin número) — número en el siguiente token
+    if (!kgEntregados && /^kilos\s+restantes:?$/i.test(strs[i])) {
+      var nKgC = parseFloat(String(strs[i+1]||'').replace(/,/g,''));
+      if (!isNaN(nKgC) && nKgC > 0) kgEntregados = nKgC;
+    }
+    // Caso D: "Kilos" y "Restantes:" en tokens separados — número en strs[i+2]
+    if (!kgEntregados && /^kilos$/i.test(strs[i]) && /^restantes:?$/i.test(strs[i+1]||'')) {
+      var nKgD = parseFloat(String(strs[i+2]||'').replace(/,/g,''));
+      if (!isNaN(nKgD) && nKgD > 0) kgEntregados = nKgD;
+    }
+    var mCh = strs[i].match(/CHOFER[:\s]+(.+)/i);
+    if (mCh && !chofer) chofer = mCh[1].trim();
+  }
+
+  var comentarios = '';
+
+  // ── Detectar renglones del detalle ──
+  var filas = [];
+  var codigosVistos = {};
+
+  for (var i = 0; i < strs.length; i++) {
+    var esCodigo9dig = /^\d{9}$/.test(strs[i]);
+    var esCodigoCero = strs[i] === '0';
+    if (!esCodigo9dig && !esCodigoCero) continue;
+    var codigo = esCodigo9dig ? strs[i] : '0';
+
+    // Buscar hacia atrás: No. renglón, Cant., Unidad
+    var cant = 0;
+    var unidad = '';
+    var noRenglon = '';
+    for (var b = i - 1; b >= Math.max(0, i - 15); b--) {
+      var tok = strs[b];
+      if (/^(PIEZA|KILO|CIENTO|ROL)$/i.test(tok) && !unidad) {
+        unidad = tok.toUpperCase();
+      }
+      if (/^[\d,]+\.\d+$/.test(tok) && !cant) {
+        cant = parseFloat(tok.replace(/,/g,''));
+      }
+      if (/^\d{1,2}$/.test(tok) && !noRenglon) {
+        noRenglon = tok;
+      }
+    }
+
+    // Buscar hacia adelante: kilos/pesos, pedido, colada, lote
+    var kilosPesos = 0;
+    var pedido = '';
+    var colada = '';
+    var lote = '';
+    for (var a = i + 1; a < Math.min(strs.length, i + 20); a++) {
+      var tok = strs[a];
+      if (/^\d+\.\d$/.test(tok) && !kilosPesos) {
+        kilosPesos = parseFloat(tok);
+      }
+      if (/^[A-Z]{3}$/.test(tok) && strs[a+1] && /^\d{4,6}$/.test(strs[a+1]) && !pedido) {
+        pedido = tok + '-' + strs[a+1];
+      }
+      if (/^[A-Z]{3}\s\d{4,6}$/.test(tok) && !pedido) {
+        pedido = tok;
+      }
+      // COLADA: 5-6 dígitos que NO sean el número ya usado en el pedido
+      if (/^\d{5,6}$/.test(tok) && pedido && !colada) {
+        var numPedido = pedido.split(' ')[1] || '';
+        if (tok !== numPedido) colada = tok;
+      }
+      if (/^\d{4}\.\d{2}$/.test(tok) && !lote) {
+        lote = tok;
+      }
+      if (tok === '-') {
+        if (pedido && !colada) colada = '';
+        if (pedido && colada !== undefined && !lote) lote = '';
+      }
+      if (/^\d{9}$/.test(tok) && tok !== codigo) break;
+    }
+
+    var kilosJ = (unidad === 'KILO') ? cant : kilosPesos;
+
+    var info = _pdfCatalogo[codigo] || _pdfCatalogo[codigo.replace(/^0+/,'')] || { d: '', f: '', p: 0 };
+    var piezas = 0;
+    var descripcionPDF = '';
+    if (esCodigoCero) {
+      for (var ad = i + 1; ad < Math.min(strs.length, i + 30); ad++) {
+        var tokD = strs[ad];
+        if (/^\d{9}$/.test(tokD)) break;
+        if (tokD === '0' && ad !== i) break;
+        if (/[A-ZÁÉÍÓÚÑ]{3,}/.test(tokD) && tokD.length > descripcionPDF.length) {
+          descripcionPDF = tokD;
+        }
+      }
+    }
+    var descripcionCat = esCodigoCero ? (descripcionPDF || info.d || '') : (info.d || '');
+    var familiaCat = info.f || '';
+    if (unidad === 'ROL') {
+      // Para ROL: KILOS = Kilos/Pesos del PDF (ya está en kilosJ), PIEZAS = Cant. del PDF
+      piezas = cant;
+    } else if (info.p > 0) {
+      var pesoBase = info.p;
+      if (/varilla/i.test(descripcionCat)) {
+        var mLong = descripcionCat.match(/(\d+\.\d+)\s*MTS/i);
+        if (mLong) pesoBase = pesoBase * parseFloat(mLong[1]);
+      }
+      piezas = pesoBase > 0 ? Math.round(kilosJ / pesoBase) : 0;
+    }
+
+    // Dedup por No. de renglón (evita perder R3 y R5 que tienen mismos datos)
+    var claveUnica = noRenglon ? ('N' + noRenglon) : (codigo + '_' + (pedido||'') + '_' + (lote||'') + '_' + (colada||''));
+    if (codigosVistos[claveUnica]) continue;
+    codigosVistos[claveUnica] = true;
+
+    filas.push({
+      fecha:        fecha,
+      remision:     remision,
+      kgEntregados: kgEntregados,
+      pedido:       pedido,
+      codigo:       codigo,
+      descripcion:  descripcionCat,
+      familia:      familiaCat,
+      kilos:        esCodigoCero ? 0 : kilosJ,
+      piezas:       esCodigoCero ? 0 : piezas,
+      comentario:   esCodigoCero && kilosJ > 0 ? (kilosJ.toLocaleString('es-MX') + ' kg') : comentarios,
+      envio:        envioNum,
+      colada:       colada,
+      lote:         lote,
+      chofer:       chofer
+    });
+  }
+
+  return { filas: filas, meta: { fecha: fecha, remision: remision, envio: envioNum } };
+}
+
+
+
+function _pdfRenderTabla() {
+  var tb = document.getElementById('env-tbody-import');
+  if (!tb) return;
+  if (!_pdfDatos.length) {
+    tb.innerHTML = '<tr><td colspan="16" class="text-center text-muted py-4">No se encontraron renglones en el PDF</td></tr>';
+    _pdfActualizarIndicador();
+    return;
+  }
+
+  // Inyectar estilos si no existen
+  if (!document.getElementById('td-input-pdf-style')) {
+    var st = document.createElement('style');
+    st.id = 'td-input-pdf-style';
+    st.textContent = [
+      '.td-input-pdf{border:none;background:transparent;width:100%;min-width:60px;font-size:11px;font-weight:600;color:#0f172a;padding:1px 3px;outline:none}',
+      '.td-input-pdf:focus{background:#e3f2fd;border-radius:3px}',
+      'tr.pdf-fila-activa td{background:#fffde7 !important}',
+      '@keyframes _pdfParpadeo{0%,100%{background:#c62828}50%{background:#ef5350}}',
+      '.pdf-ind-revisar{animation:_pdfParpadeo 0.75s infinite;color:white;padding:3px 9px;border-radius:4px;font-weight:900;font-size:11px;display:inline-block}',
+      '.pdf-ind-ok{background:#2e7d32;color:white;padding:3px 9px;border-radius:4px;font-weight:900;font-size:11px;display:inline-block}'
+    ].join('');
+    document.head.appendChild(st);
+  }
+
+  // Columnas editables en orden (para navegación ←→)
+  var ECOLS = ['fecha','remision','kgEntregados','pedido','codigo','descripcion','familia','kilos','piezas','comentario','envio','colada','lote','chofer'];
+
+  tb.innerHTML = _pdfDatos.map(function(r, idx) {
+    function inp(campo, extra) {
+      var v = String(r[campo]||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      return '<input class="td-input-pdf" data-idx="'+idx+'" data-campo="'+campo+'" value="'+v+'"'+(extra?' style="'+extra+'"':'')+' onchange="_pdfCambiarCampo('+idx+',\''+campo+'\',this.value)">';
+    }
+    return '<tr id="pdf-row-'+idx+'" data-idx="'+idx+'">'
+      +'<td style="text-align:center;color:#999;font-size:10px">'+(idx+1)+'</td>'
+      +'<td>'+inp('fecha','width:88px')+'</td>'
+      +'<td>'+inp('remision','width:62px')+'</td>'
+      +'<td><input class="td-input-pdf pdf-kg-ent-input" data-idx="'+idx+'" data-campo="kgEntregados" style="text-align:right;width:75px;font-weight:700" value="'+Math.round(r.kgEntregados||0)+'" onchange="_pdfCambiarKgEnt(this.value)" onfocus="this.select()"></td>'
+      +'<td>'+inp('pedido','width:88px;color:#1b5e20;font-weight:700')+'</td>'
+      +'<td>'+inp('codigo','width:78px')+'</td>'
+      +'<td>'+inp('descripcion','width:180px;font-size:10px')+'</td>'
+      +'<td>'+inp('familia','width:90px;font-size:10px')+'</td>'
+      +'<td><input class="td-input-pdf" data-idx="'+idx+'" data-campo="kilos" style="text-align:right;width:72px;font-weight:700;color:#800020" value="'+Math.round(r.kilos||0)+'" onchange="_pdfCambiarKilos('+idx+',this.value)" onfocus="this.select()"></td>'
+      +'<td><input class="td-input-pdf" data-idx="'+idx+'" data-campo="piezas" style="text-align:right;width:58px;font-weight:700;color:#1565c0" value="'+_envFormatNum(r.piezas)+'" onchange="_pdfCambiarPiezas('+idx+',this.value)"></td>'
+      +'<td>'+inp('comentario','width:150px;font-size:10px')+'</td>'
+      +'<td>'+inp('envio','color:#c2185b;font-weight:700')+'</td>'
+      +'<td>'+inp('colada')+'</td>'
+      +'<td>'+inp('lote')+'</td>'
+      +'<td>'+inp('chofer')+'</td>'
+      +'<td><button class="btn btn-sm btn-outline-danger" style="padding:1px 5px;font-size:10px" onclick="_pdfEliminarFila('+idx+')">✕</button></td>'
+      +'</tr>';
+  }).join('');
+
+  // Agregar eventos a todos los inputs
+  Array.from(tb.querySelectorAll('.td-input-pdf')).forEach(function(inp) {
+    // Al enfocar: marcar fila amarilla y seleccionar contenido
+    inp.addEventListener('focus', function() {
+      var prev = tb.querySelector('tr.pdf-fila-activa');
+      if (prev) prev.classList.remove('pdf-fila-activa');
+      var row = document.getElementById('pdf-row-' + this.dataset.idx);
+      if (row) row.classList.add('pdf-fila-activa');
+      var self = this;
+      setTimeout(function(){ self.select(); }, 0);
+    });
+    // Al cambiar valor: actualizar datos y recalcular indicador
+    inp.addEventListener('change', function() {
+      var i     = parseInt(this.dataset.idx);
+      var campo = this.dataset.campo;
+      if (_pdfDatos[i] === undefined) return;
+      // Para campos numéricos parsear sin comas
+      if (campo === 'kilos' || campo === 'kgEntregados' || campo === 'piezas') {
+        var n = parseFloat(String(this.value).replace(/,/g,'')) || 0;
+        _pdfDatos[i][campo] = n;
+        this.value = Math.round(n);
+      } else {
+        _pdfDatos[i][campo] = this.value;
+      }
+      // Si es kgEntregados propagarlo a todos los renglones
+      if (campo === 'kgEntregados') {
+        var kg = _pdfDatos[i][campo];
+        _pdfDatos.forEach(function(r) { r.kgEntregados = kg; });
+        document.querySelectorAll('.pdf-kg-ent-input').forEach(function(el) {
+          el.value = Math.round(kg);
+        });
+      }
+      _pdfActualizarIndicador();
+    });
+    // Navegación con flechas y Tab
+    inp.addEventListener('keydown', function(e) {
+      var idx   = parseInt(this.dataset.idx);
+      var ci    = ECOLS.indexOf(this.dataset.campo);
+      var total = _pdfDatos.length;
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        if (idx < total - 1) _pdfFocusInput(tb, idx + 1, this.dataset.campo);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (idx > 0) _pdfFocusInput(tb, idx - 1, this.dataset.campo);
+      } else if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        if (ci < ECOLS.length - 1) {
+          _pdfFocusInput(tb, idx, ECOLS[ci + 1]);
+        } else if (idx < total - 1) {
+          _pdfFocusInput(tb, idx + 1, ECOLS[0]);
+        }
+      } else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+        e.preventDefault();
+        if (ci > 0) {
+          _pdfFocusInput(tb, idx, ECOLS[ci - 1]);
+        } else if (idx > 0) {
+          _pdfFocusInput(tb, idx - 1, ECOLS[ECOLS.length - 1]);
+        }
+      }
+    });
+  });
+
+  _pdfActualizarIndicador();
+}
+
+// Actualiza un campo de una fila del array _pdfDatos
+function _pdfCambiarCampo(idx, campo, valor) {
+  if (_pdfDatos[idx] !== undefined) _pdfDatos[idx][campo] = valor;
+}
+
+// Mueve el foco a un input específico por fila e índice de columna editable
+function _pdfFocusInput(tb, idx, campo) {
+  var row = document.getElementById('pdf-row-' + idx);
+  if (!row) return;
+  var inp = row.querySelector('[data-campo="' + campo + '"]');
+  if (inp) inp.focus();
+}
+
+// Actualiza el indicador OK / REVISAR comparando suma de kilos vs KG_ENT
+function _pdfActualizarIndicador() {
+  var ind = document.getElementById('env-pdf-indicador');
+  if (!ind) return;
+  if (!_pdfDatos.length) { ind.textContent = ''; ind.className = ''; return; }
+  var sumaKilos = 0;
+  _pdfDatos.forEach(function(r) { sumaKilos += (parseFloat(r.kilos) || 0); });
+  var kgEnt = parseFloat(_pdfDatos[0].kgEntregados) || 0;
+  var sumR = Math.round(sumaKilos);
+  var kgR  = Math.round(kgEnt);
+  if (sumR > 0 && kgR > 0 && sumR === kgR) {
+    ind.className = 'pdf-ind-ok';
+    ind.textContent = '✅ OK — ' + _envFormatNum(sumR) + ' Kg';
+  } else if (sumR > 0) {
+    ind.className = 'pdf-ind-revisar';
+    ind.textContent = '⚠ REVISAR — Kilos: ' + _envFormatNum(sumR) + ' / KG Ent: ' + _envFormatNum(kgR);
+  } else {
+    ind.textContent = ''; ind.className = '';
+  }
+}
+
+// Actualiza KG_ENT en todos los renglones y refresca el indicador
+function _pdfCambiarKgEnt(val) {
+  var n = parseFloat(String(val).replace(/,/g,'')) || 0;
+  _pdfDatos.forEach(function(r) { r.kgEntregados = n; });
+  document.querySelectorAll('.pdf-kg-ent-input').forEach(function(inp) {
+    inp.value = _envFormatNum(n);
+  });
+  _pdfActualizarIndicador();
+}
+
+function _pdfCambiarKilos(idx, val) {
+  var n = parseFloat(String(val).replace(/,/g,'')) || 0;
+  _pdfDatos[idx].kilos = n;
+  var el = document.querySelector('[data-idx="'+idx+'"][onchange*="_pdfCambiarKilos"]');
+  if (el) el.value = _envFormatNum(n);
+  _pdfActualizarIndicador();
+}
+
+function _pdfCambiarPiezas(idx, val) {
+  var n = parseFloat(String(val).replace(/,/g,'')) || 0;
+  _pdfDatos[idx].piezas = n;
+  var el = document.querySelector('[data-idx="'+idx+'"][onchange*="_pdfCambiarPiezas"]');
+  if (el) el.value = _envFormatNum(n);
+}
+
+// Elimina una fila de la tabla
+function _pdfEliminarFila(idx) {
+  _pdfDatos.splice(idx, 1);
+  _pdfRenderTabla();
+  var btn = document.getElementById('env-btn-save-import');
+  if (btn) btn.style.display = _pdfDatos.length ? 'inline-block' : 'none';
+}
+
+// Guarda en Google Sheets llamando a guardarFilasPDF en GS
+function _envGuardarPDF() {
+  if (!_pdfDatos.length) { Swal.fire('Atención','No hay datos para guardar.','warning'); return; }
+
+  var _verificarYGuardar = function() {
+    var envioId = _pdfDatos[0] ? _pdfDatos[0].envio : '';
+    showLoader('Verificando duplicados...');
+  google.script.run
+    .withSuccessHandler(function(esDuplicado) {
+      if (esDuplicado) {
+        hideLoader();
+        Swal.fire({
+          icon: 'warning',
+          title: 'INT duplicado',
+          html: 'El envío <strong>' + envioId + '</strong> ya existe en la base de datos.<br>¿Deseas guardarlo de todas formas?',
+          showCancelButton: true,
+          confirmButtonText: 'Sí, guardar',
+          cancelButtonText: 'Cancelar'
+        }).then(function(res) {
+          if (res.isConfirmed) _pdfEjecutarGuardado();
+        });
+      } else {
+        _pdfEjecutarGuardado();
+      }
+    })
+    .withFailureHandler(function(e) { hideLoader(); Swal.fire('Error',''+e,'error'); })
+    .verificarEnvioDuplicado(envioId);
+  };
+
+  // Validar que kilos sumen correctamente
+  var sumaKilos = 0;
+  _pdfDatos.forEach(function(r) { sumaKilos += (parseFloat(r.kilos) || 0); });
+  var kgEnt = parseFloat(_pdfDatos[0].kgEntregados) || 0;
+  if (kgEnt > 0 && Math.round(sumaKilos) !== Math.round(kgEnt)) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Kilos no coinciden',
+      html: 'Los kilos importados (<strong>' + _envFormatNum(Math.round(sumaKilos)) + '</strong>) no suman los kilos que dice el envío (<strong>' + _envFormatNum(Math.round(kgEnt)) + '</strong>).',
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#1a237e'
+    }).then(function(res) {
+      if (res.isConfirmed) _verificarYGuardar();
+    });
+  } else {
+    _verificarYGuardar();
+  }
+}
+
+function _pdfEjecutarGuardado() {
+  var inputPdf = document.getElementById('env-pdf-input');
+  var total    = _pdfDatos.length;
+  showLoader('Guardando...');
+  google.script.run
+    .withSuccessHandler(function() {
+      hideLoader();
+      Swal.fire({ icon:'success', title:'¡Guardado!', html: '✅ Se guardaron <strong>' + total + '</strong> registros.', timer:2500, showConfirmButton:false });
+      _pdfDatos = [];
+      _pdfRenderTabla();
+      var btn = document.getElementById('env-btn-save-import'); if (btn) btn.style.display = 'none';
+      var sp  = document.getElementById('env-pdf-nombre'); if (sp) sp.textContent = '';
+      var ss2 = document.getElementById('env-pdf-status');  if (ss2) ss2.textContent = '';
+      if (inputPdf) inputPdf.value = '';
+      _pdfBase64Actual = null;
+      _pdfNombreActual = null;
+      _pdfArchivoActual = null;
+    })
+    .withFailureHandler(function(e) { hideLoader(); Swal.fire('Error',''+e,'error'); })
+    .guardarFilasPDFConDrive(_pdfDatos, _pdfBase64Actual || '', _pdfNombreActual || '');
+}
+
+// ── REPORTE ──
+function _envGenerarReporte() {
+  var grid=document.getElementById('env-month-grid'); if(!grid) return;
+  var meses=[];
+  Array.from(grid.children).forEach(function(d,i){if(d.classList.contains('selected'))meses.push(i);});
+  if(!meses.length){Swal.fire('Atención','Selecciona al menos un mes.','warning');return;}
+  showLoader('Generando reporte...');
+  google.script.run
+    .withSuccessHandler(function(res){
+      hideLoader();
+      _envRenderReporte(res);
+      _env_rawReporte=res.rawRows||[];
+      var bx=document.getElementById('env-btn-excel'); if(bx) bx.style.display='inline-block';
+      var bt=document.getElementById('env-btn-tele'); if(bt) bt.style.display='inline-block';
+    })
+    .withFailureHandler(function(e){hideLoader();Swal.fire('Error',''+e,'error');})
+    .generarReporteEnvios(meses);
+}
+
+function _envRenderReporte(data) {
+  var sub=document.getElementById('env-rep-subtitle'); if(sub) sub.innerText=(data.tituloMeses||'')+' '+(data.year||'');
+  var htmlFam='';
+  if(data.reporteFam) Object.keys(data.reporteFam).sort().forEach(function(f){
+    var d=data.reporteFam[f];
+    if(d.kilos>0) htmlFam+='<div style="display:flex;border-bottom:1px solid #eee;padding:6px 14px;font-size:12px"><div style="flex:1;font-weight:700;color:#333">'+f+'</div><div style="width:110px;text-align:right">'+_envFormatNum(d.piezas)+' Pz</div><div style="width:110px;text-align:right;font-weight:900">'+_envFormatNum(d.kilos)+' Kg</div></div>';
+  });
+  var bF=document.getElementById('env-rep-fam'); if(bF) bF.innerHTML=htmlFam;
+  var htmlCat='';
+  if(data.reporteCat){
+    (data.ordenCats||[]).forEach(function(c){var d=data.reporteCat[c];if(d&&d.kilos>0)htmlCat+='<div style="display:flex;border-bottom:1px solid #eee;padding:6px 14px;font-size:12px"><div style="flex:1;font-weight:700;color:#333">'+c+'</div><div style="width:110px;text-align:right">'+_envFormatNum(d.piezas)+' Pz</div><div style="width:110px;text-align:right;font-weight:900">'+_envFormatNum(d.kilos)+' Kg</div></div>';});
+    Object.keys(data.reporteCat).forEach(function(c){if((data.ordenCats||[]).indexOf(c)===-1&&data.reporteCat[c].kilos>0)htmlCat+='<div style="display:flex;border-bottom:1px solid #eee;padding:6px 14px;font-size:12px"><div style="flex:1;font-weight:700;color:#333">'+c+'</div><div style="width:110px;text-align:right">'+_envFormatNum(data.reporteCat[c].piezas)+' Pz</div><div style="width:110px;text-align:right;font-weight:900">'+_envFormatNum(data.reporteCat[c].kilos)+' Kg</div></div>';});
+  }
+  var bC=document.getElementById('env-rep-cat'); if(bC) bC.innerHTML=htmlCat;
+  var tot=document.getElementById('env-rep-total'); if(tot) tot.innerText='TOTAL: '+_envFormatNum(data.total)+' Kg';
+  var rd=document.getElementById('env-rep-days'); if(rd) rd.innerText='Días Operativos: '+(data.diasOperativos||0);
+  var ra=document.getElementById('env-rep-avg'); if(ra) ra.innerText='Promedio: '+_envFormatNum(data.promedio)+' Kg/Día';
+}
+
+function _envDescargarExcel() {
+  if(!_env_rawReporte||!_env_rawReporte.length) return;
+  if(typeof XLSX==='undefined'){Swal.fire('Info','Librería XLSX no disponible.','info');return;}
+  var wb=XLSX.utils.book_new();
+  var wsData=[['FECHA','REMISION','PEDIDO','CODIGO','DESCRIPCION','FAMILIA','KILOS','PIEZAS','ENVIO']];
+  _env_rawReporte.forEach(function(r){wsData.push([r.FECHA,r.REMISION,r.PEDIDO,r.CODIGO,r.DESCRIPCION,r.FAMILIA,r.KILOS,r.PIEZAS,r.ENVIO]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(wsData),'Envios');
+  XLSX.writeFile(wb,'Reporte_Envios_'+new Date().getTime()+'.xlsx');
+}
+
+function _envEnviarTelegram() {
+  var card=document.getElementById('env-report-card');
+  var ctrl=document.querySelector('#env-sec-report .d-flex');
+  if(ctrl) ctrl.style.display='none';
+  html2canvas(card).then(function(canvas){
+    if(ctrl) ctrl.style.display='flex';
+    var img=canvas.toDataURL('image/png');
+    google.script.run
+      .withSuccessHandler(function(r){Swal.fire('Telegram',r,'info');})
+      .enviarReporteTelegramEnvios(img,'Reporte Mensual Envios');
+  });
+}
+
+// ── ADD TD-INPUT-GMP STYLE (inline) ──
+// We'll add the style via a helper function called once
+(function(){
+  if(document.getElementById('td-input-gmp-style')) return;
+  var s=document.createElement('style');
+  s.id='td-input-gmp-style';
+  s.textContent='.td-input-gmp{width:100%;border:none;background:transparent;padding:3px;font-size:12px;box-sizing:border-box}.td-input-gmp:focus{border-color:#1976d2;background:white;outline:1px solid #1976d2;border-radius:2px}';
+  document.head.appendChild(s);
+})();
+
+// ══════════════════════════════════════════════════════════
+//  EXISTENCIA ALAMBRÓN — Resumen + Detallada (igual que ExistenciaHTML)
+//  Función GS: getMateriaPrimaData() → array de objetos con estructura ExistenciaHTML
+// ══════════════════════════════════════════════════════════
+var _exist_data = [], _exist_filtros = {}, _exist_vista = 'resumen', _exist_tipoFiltro = '';
