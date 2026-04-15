@@ -12,7 +12,13 @@
       "Bash(curl -s \"https://api.github.com/users/ToolCN/repos?per_page=50\")",
       "Bash(git init *)",
       "Bash(git remote *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git branch *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(node extract_modules.js)",
+      "Bash(node rebuild_setup.js)",
+      "Bash(npm run *)"
     ]
   }
 }
