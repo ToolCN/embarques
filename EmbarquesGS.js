@@ -1,11 +1,34 @@
 // ══════════════════════════════════════════════════════════
-//  URL DEL TABLERO MÉTRICAS
+//  URL DEL TABLERO MÉTRICAS (vive en OTRO Apps Script: PCP)
 // ══════════════════════════════════════════════════════════
+// La URL del deployment de PCP se guarda en ScriptProperties.
+// Para configurarla la primera vez, corre desde el editor de Apps Script:
+//   setUrlPCP("https://script.google.com/macros/s/AKfycbXXXXXXXXX/exec")
+// Para verificarla:
+//   getUrlPCP()
 function getTablerMetricasUrl() {
   try {
-    var base = ScriptApp.getService().getUrl();
-    return base + "?v=TABLERO";   // Ajusta el parámetro v si tu tablero usa otro
+    var urlPCP = PropertiesService.getScriptProperties().getProperty("URL_PCP");
+    if (!urlPCP) return "";
+    // Agregamos ?v=TABLERO para que PCP (cuando lo soporte) abra directo el módulo
+    var sep = urlPCP.indexOf("?") >= 0 ? "&" : "?";
+    return urlPCP + sep + "v=TABLERO";
   } catch(e) { return ""; }
+}
+
+// Configura la URL del deployment de PCP. Córrela UNA VEZ desde el editor.
+// Ejemplo: setUrlPCP("https://script.google.com/macros/s/AKfycb..../exec")
+function setUrlPCP(url) {
+  if (!url || typeof url !== "string") {
+    throw new Error("Debes pasar la URL del deployment de PCP como string.");
+  }
+  PropertiesService.getScriptProperties().setProperty("URL_PCP", url.trim());
+  return "✅ URL_PCP guardada: " + url.trim();
+}
+
+// Devuelve la URL de PCP actualmente guardada (para verificar)
+function getUrlPCP() {
+  return PropertiesService.getScriptProperties().getProperty("URL_PCP") || "(no configurada)";
 }
 
 
@@ -1711,3 +1734,4 @@ function actualizarEstadoMP(id, nuevoEstado, infoSalida, nombreUsuario) {
   sheet.getRange(sheetRow, 18).setValue(historialFinal);
   return true;
 }
+

@@ -624,9 +624,14 @@ function abrirTablerMetricas() {
       // Si el GS devuelve URL la usamos; si no, construimos con v=TABLERO
       var finalUrl = url || '';
       if(!finalUrl) {
-        // Fallback: intentar construir la URL base con ?v=TABLERO
-        // El doGet de CodigoGS_SistemaProduccion usa e.parameter.v == "TABLERO"
-        Swal.fire('Info','La función <code>getTablerMetricasUrl()</code> no está configurada en el GAS.<br>Asegúrate de que retorne la URL del webapp con <code>?v=TABLERO</code>.','info');
+        Swal.fire({
+          icon:'warning',
+          title:'URL de PCP no configurada',
+          html:'El Tablero Métricas vive en otra app (PCP).<br><br>'+
+               'Para habilitar el botón, abre el editor de Apps Script de <b>Embarques</b> y corre desde la consola:<br><br>'+
+               '<code style="background:#f4f4f4;padding:4px 8px;border-radius:4px;display:inline-block;">setUrlPCP("https://script.google.com/macros/s/AKfycb.../exec")</code><br><br>'+
+               'Reemplaza la URL por la del <b>deployment activo</b> de PCP.'
+        });
         return;
       }
       _tablerosUrl = finalUrl;
