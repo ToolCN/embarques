@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #1a237e;
+      --danger:  #d32f2f;
+      --success: #2e7d32;
+      --bg:      #f0f4f8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Roboto', sans-serif; background: var(--bg); min-height: 100vh; }
+
+    /* ══ LOADER ══ */
+    #loader {
+      position: fixed; inset: 0; background: #fff;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 99999;
+    }
+    .tool-container { width: 320px; height: 100px; }
+    .text-svg { font-size: 60px; font-weight: 900; text-anchor: middle; font-family: sans-serif; }
+    .liquid { animation: fill-anim 3s infinite ease-in-out; fill: #004a99; }
+    @keyframes fill-anim { 0%,100%{transform:translateY(80px)} 50%{transform:translateY(-8px)} }
+    .clean-outline { fill: none; stroke: black; stroke-width: 2px; }
+
+    /* ══ LOGIN ══ */
+    #login-screen {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, #0f172a, #1e3a5f);
+      display: flex; align-items: center; justify-content: center; z-index: 9998; padding: 20px;
+    }
+    .login-card {
+      background: white; padding: 2.5rem; border-radius: 20px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 25px 50px rgba(0,0,0,.5); text-align: center;
+    }
+    .login-field {
+      display: flex; align-items: center;
+      background: #f1f5f9; border-radius: 10px; margin-bottom: 12px;
+      overflow: hidden; border: 2px solid transparent; transition: .2s;
+    }
+    .login-field:focus-within { border-color: var(--primary); background: white; }
+    .login-field i { padding: 0 14px; color: #94a3b8; font-size: 15px; }
+    .login-field input {
+      flex: 1; padding: 13px 10px 13px 0; border: none;
+      background: transparent; font-size: 15px; outline: none; font-family: 'Roboto',sans-serif;
+    }
+    #login-error {
+      display: none; background: #fee2e2; color: #b91c1c;
+      border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+      font-size: 13px; font-weight: 600;
+    }
+    .btn-login {
+      width: 100%; padding: 15px; border: none; border-radius: 10px;
+      background: var(--primary); color: white; font-size: 16px;
+      font-weight: 900; cursor: pointer;
+    }
+    /* Autocomplete */
+    .ac-wrap { position: relative; }
+    .ac-list {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: white; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15); z-index: 200;
+      max-height: 200px; overflow-y: auto; display: none;
+      border: 1px solid #e2e8f0; margin-top: 4px;
+    }
+    .ac-item { padding: 10px 14px; cursor: pointer; font-size: 14px; font-weight: 600; color: #0f172a; }
+    .ac-item:hover { background: #eff6ff; color: #1d4ed8; }
+
+    /* ══ HEADER ══ */
+    .app-header {
+      background: var(--primary); color: white;
+      padding: 10px 20px; border-bottom: 3px solid #004a99;
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-logo { height: 40px; }
+    .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .user-badge {
+      background: rgba(255,255,255,.15); border-radius: 8px;
+      padding: 3px 10px; font-size: 11px; font-weight: 900;
+    }
+    .btn-logout {
+      background: none; border: none; color: rgba(255,255,255,.7);
+      font-size: 10px; font-weight: 900; cursor: pointer;
+      text-transform: uppercase;
+    }
+    /* Tabs dentro del header */
+    .header-tabs { display: flex; gap: 4px; }
+    .nav-tab {
+      padding: 6px 18px; font-weight: 900; font-size: .82rem;
+      color: rgba(255,255,255,.65); border: none; background: rgba(255,255,255,.1);
+      cursor: pointer; border-radius: 6px 6px 0 0; transition: background .2s, color .2s;
+    }
+    .nav-tab.active { color: white; background: rgba(255,255,255,.25); }
+    /* Botón quitar filtros en header */
+    .btn-quitar-filtros {
+      font-size: .72rem; font-weight: 700; padding: 4px 10px;
+      border: 1px solid rgba(255,255,255,.45); border-radius: 6px; cursor: pointer;
+      background: rgba(255,255,255,.12); color: rgba(255,255,255,.85);
+    }
+    .btn-quitar-filtros.activo {
+      background: #ffc107; color: #000; border-color: #ffc107;
+      animation: pulse-btn 1.2s infinite;
+    }
+    @keyframes pulse-btn {
+      0%,100%{ box-shadow: 0 0 0 0 rgba(255,193,7,.7); }
+      50%    { box-shadow: 0 0 0 6px rgba(255,193,7,0); }
+    }
+
+    /* ══ TABLA ══ */
+    .table-wrap { overflow: auto; height: calc(100vh - 62px); padding: 0 16px 16px; }
+    table.main-tbl { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    table.main-tbl thead { position: sticky; top: 0; z-index: 10; }
+    table.main-tbl thead th {
+      background: #ffc107 !important; color: #000 !important;
+      border: 1px solid #d4a800; padding: 0;
+      white-space: nowrap; font-weight: 900;
+    }
+    .th-inner {
+      display: flex; align-items: center; justify-content: center;
+      gap: 4px; padding: 6px 8px; cursor: pointer; user-select: none;
+    }
+    .th-inner:hover { background: #ffe066; }
+    th.th-filtrado { background: #fdd835 !important; }
+    th.th-filtrado .filter-icon { color: #c62828 !important; }
+    table.main-tbl td {
+      border: 1px solid #b0b8c9; padding: 4px 7px;
+      text-align: center; vertical-align: middle;
+    }
+    tr.fila-par td  { background: #fffbe6; }
+    tr.fila-impar td { background: #ffffff; }
+    tr:hover td { background: #fff3cd !important; }
+    .kilos-col { color: #003a99; font-weight: bold; }
+    .estado-ok       { background:#198754;color:white;border-radius:4px;padding:2px 6px;font-weight:bold;font-size:.72rem; }
+    .estado-bajo      { background:#dc3545;color:white;border-radius:4px;padding:2px 6px;font-weight:bold;font-size:.72rem; }
+    .estado-sin-exist { background:#dc3545;color:white;border-radius:4px;padding:2px 6px;font-weight:bold;font-size:.72rem;animation:vibrar .4s infinite; }
+    @keyframes vibrar { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+    .row-totales { background:#f8f8f8!important; color:#800000; font-weight:bold; font-size:.95rem; }
+    .sort-indicator { font-size:10px; font-weight:900; margin-left:2px; }
+
+    /* Botón inspección */
+    .btn-insp {
+      background: var(--primary); color: white; border: none;
+      border-radius: 5px; padding: 3px 8px; font-size: .72rem;
+      font-weight: 700; cursor: pointer; white-space: nowrap;
+    }
+    .btn-insp:hover { background: #283593; }
+    .btn-insp.con-datos { background: #2e7d32; }
+
+    /* ══ DROPDOWN FILTRO ESTILO EXCEL/FORJA ══ */
+    .excel-drop {
+      position: fixed; z-index: 9999;
+      background: white; border: 1px solid #cbd5e1;
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      min-width: 240px; max-width: 300px; overflow: hidden;
+      font-size: .78rem; display: none;
+    }
+    .excel-drop .fd-search {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 10px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+    }
+    .excel-drop .fd-search input {
+      flex: 1; border: 1px solid #cbd5e1; border-radius: 6px;
+      padding: 5px 8px; font-size: .78rem; outline: none;
+    }
+    .excel-drop .fd-sort {
+      display: flex; gap: 4px;
+      padding: 6px 10px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;
+    }
+    .excel-drop .fd-sort button {
+      flex: 1; padding: 5px 6px; border: 1px solid #cbd5e1;
+      border-radius: 6px; font-size: .72rem; font-weight: 700;
+      cursor: pointer; background: white; display: flex;
+      align-items: center; justify-content: center; gap: 3px;
+    }
+    .excel-drop .fd-sort button:hover { background: #f1f5f9; }
+    .excel-drop .fd-sort .fd-btn-clear {
+      flex: 0.55; background: #fff3f3; border-color: #f5c6c6; color: #c62828;
+    }
+    .excel-drop .fd-list { max-height: 220px; overflow-y: auto; padding: 4px 0; }
+    .excel-drop .fd-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 12px; cursor: pointer;
+    }
+    .excel-drop .fd-item:hover { background: #f1f5f9; }
+    .excel-drop .fd-item input[type=checkbox] {
+      cursor: pointer; accent-color: var(--primary); width:14px; height:14px;
+    }
+    .excel-drop .fd-actions {
+      display: flex; gap: 6px; padding: 8px 10px;
+      border-top: 1px solid #e2e8f0; background: #f8fafc;
+    }
+    .excel-drop .fd-actions button {
+      flex: 1; padding: 6px; border-radius: 6px;
+      border: none; font-weight: 800; font-size: .75rem; cursor: pointer;
+    }
+    .fd-ok { background: var(--primary); color: white; }
+    .fd-cancel { background: #e2e8f0; color: #374151; }
+
+    /* ══ MODAL REGISTRO INSPECCIÓN ══ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.72);
+      z-index: 9000; display: none; align-items: center;
+      justify-content: center; padding: 10px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white; border-radius: 10px; width: 100%;
+      max-width: 820px; max-height: 95vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    /* Modal destino: encima del modal de inspección */
+    #modalDestino { z-index: 10000; }
+
+    /* ── Estilos del formulario de inspección (réplica del formato FO-CA-019) ── */
+    .insp-header {
+      font-size: 1.1rem; font-weight: 900; text-align: center;
+      border: 2px solid #000; padding: 6px;
+      background: #fff; color: #000; text-transform: uppercase;
+    }
+    .insp-banner {
+      display: flex; align-items: stretch; border: 2px solid #000;
+      border-top: none; min-height: 64px;
+    }
+    /* El texto de destino ocupa todo el ancho menos el cuadro de color */
+    .insp-banner-grade {
+      flex: 1; display: flex; align-items: center;
+      justify-content: flex-start; /* empieza desde la izquierda */
+      font-size: 2rem; font-weight: 900; letter-spacing: .02em;
+      cursor: pointer; user-select: none; position: relative;
+      padding-left: 12px; white-space: nowrap;
+    }
+    /* Cuadro de color: ~25% del banner, pegado a la derecha */
+    .insp-grade-square {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 25%;
+    }
+    /* El swatch lateral ya no se usa — lo ocultamos */
+    .insp-banner-color { display: none; }
+    /* Columna izquierda más ancha, texto más grande */
+    .insp-body {
+      border: 2px solid #000; border-top: none;
+      display: grid; grid-template-columns: 1fr 1.6fr;
+    }
+    .insp-col { padding: 8px 12px; }
+    .insp-col + .insp-col { border-left: 1px solid #000; }
+    .insp-row {
+      display: flex; align-items: center;
+      gap: 8px; margin-bottom: 6px; font-size: .88rem;
+    }
+    .insp-label { font-weight: 700; white-space: nowrap; min-width: 100px; font-size: .88rem; }
+    .insp-val {
+      border: 1px solid #aaa; border-radius: 3px; padding: 3px 8px;
+      font-size: .9rem; font-weight: 700; min-width: 130px;
+      background: #f9f9f9; color: #000;
+    }
+    .insp-val.editable { background: white; cursor: text; border-color: var(--primary); }
+    .insp-val-input {
+      border: 1px solid var(--primary); border-radius: 3px;
+      padding: 3px 8px; font-size: .88rem; width: 100%;
+      outline: none; font-family: 'Roboto', sans-serif;
+    }
+    /* Fotos — zona derecha completa */
+    .fotos-zona {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+    }
+    .fotos-drop-area {
+      border: 2px dashed #94a3b8; border-radius: 8px;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      cursor: pointer; background: #f8fafc; transition: border-color .2s;
+      padding: 10px; text-align: center; min-height: 180px;
+    }
+    .fotos-drop-area.drag-over { border-color: var(--primary); background: #eff6ff; }
+    /* Grid de fotos: ocupa todo el espacio disponible */
+    .fotos-grid {
+      display: grid;
+      gap: 6px; margin-top: 6px; width: 100%;
+    }
+    .fotos-grid[data-count="1"] { grid-template-columns: 1fr; }
+    .fotos-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
+    .fotos-grid[data-count="3"] { grid-template-columns: 1fr 1fr 1fr; }
+    .fotos-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
+    .foto-thumb {
+      position: relative; border-radius: 6px;
+      overflow: hidden; border: 2px solid #ddd;
+      aspect-ratio: 1 / 1;
+    }
+    .foto-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto-thumb .btn-rm {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(220,38,38,.85); color: white;
+      border: none; border-radius: 50%; width: 22px; height: 22px;
+      font-size: 11px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .fotos-estado { font-size: .72rem; color: var(--primary); font-weight: 700; margin-top: 4px; }
+
+    /* ── Sección C y P (igual que antes) ── */
+    .insp-cp-section { border: 2px solid #000; border-top: none; }
+    .insp-cp-row {
+      display: grid; align-items: center; border-bottom: 1px solid #ccc;
+      font-size: .72rem;
+    }
+    .insp-cp-row:last-child { border-bottom: none; }
+    .insp-cp-label {
+      font-size: 1.2rem; font-weight: 900; padding: 8px;
+      border-right: 1px solid #000; text-align: center;
+    }
+    .insp-cp-grid {
+      display: grid; padding: 4px 6px; gap: 4px 6px;
+    }
+    .insp-cp-th { font-size: .65rem; font-weight: 700; text-align: center; color: #555; }
+    .insp-cp-val-wrap { display: flex; justify-content: center; }
+
+    /* ── Modal destino ── */
+    .modal-destino-box {
+      background: white; border-radius: 10px; padding: 24px;
+      max-width: 420px; width: 100%;
+    }
+    .destino-btn {
+      display: block; width: 100%; padding: 10px;
+      margin-bottom: 8px; border: none; border-radius: 8px;
+      font-size: .9rem; font-weight: 900; cursor: pointer;
+      text-align: left; padding-left: 14px;
+    }
+
+    /* ── Footer modal ── */
+    .modal-footer-btns {
+      display: flex; gap: 10px; justify-content: flex-end;
+      padding: 12px 16px; border-top: 1px solid #ddd; background: #f8fafc;
+      position: sticky; bottom: 0;
+    }
+    .btn-guardar-insp {
+      background: var(--primary); color: white; border: none;
+      padding: 10px 24px; border-radius: 8px; font-weight: 900;
+      font-size: .9rem; cursor: pointer;
+    }
+    .btn-cerrar-insp {
+      background: #6b7280; color: white; border: none;
+      padding: 10px 18px; border-radius: 8px; font-weight: 700;
+      font-size: .9rem; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ LOADER ══ -->
+<div id="loader">
+  <div class="tool-container">
+    <svg viewBox="0 0 320 100">
+      <defs><clipPath id="clip"><text x="160" y="78" class="text-svg">TOOL CN</text></clipPath></defs>
+      <rect x="0" y="0" width="320" height="100" class="liquid" clip-path="url(#clip)" />
+      <text x="160" y="78" class="text-svg clean-outline">TOOL CN</text>
+    </svg>
+  </div>
+  <p style="font-weight:bold;color:#888;font-size:.85rem;margin-top:10px;">CARGANDO LIBERACIÓN DE ALAMBRÓN...</p>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238"
+         width="150" style="margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;">
+    <h4 style="font-weight:900;color:#0f172a;margin-bottom:4px;font-size:18px;">Liberación de Alambrón</h4>
+    <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Ingresa tus credenciales para continuar</p>
+    <div id="login-error"><i class="fas fa-exclamation-circle"></i> <span id="login-error-txt"></span></div>
+    <div class="ac-wrap">
+      <div class="login-field">
+        <i class="fas fa-user"></i>
+        <input type="text" id="userInput" placeholder="Usuario..."
+               autocomplete="off" oninput="filtrarAC()" onblur="setTimeout(cerrarAC,200)">
+      </div>
+      <div class="ac-list" id="acList"></div>
+    </div>
+    <div class="login-field">
+      <i class="fas fa-lock"></i>
+      <input type="password" id="passInput" placeholder="Contraseña"
+             onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">
+      <i class="fas fa-sign-in-alt" style="margin-right:8px;"></i>INICIAR SESIÓN
+    </button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" style="display:none;">
+
+  <!-- Header con tabs integrados -->
+  <div class="app-header">
+    <div style="display:flex;align-items:center;gap:12px;flex:1">
+      <img src="https://www.toolcn.mx/cdn/shop/files/logo_ToolCN_shopify.png?v=1751677238" class="header-logo">
+      <div>
+        <div style="font-size:1rem;font-weight:900;">LIBERACIÓN DE ALAMBRÓN</div>
+        <div class="header-tabs" style="margin-top:4px;">
+          <button class="nav-tab active" id="tab-exist" onclick="cambiarTab('existencia')">EXISTENCIA DETALLADA</button>
+          <button class="nav-tab" id="tab-entradas" onclick="cambiarTab('entradas')">ENTRADAS 6 MESES</button>
+        </div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-badge"><i class="fas fa-user" style="margin-right:5px;"></i><span id="labelUsuario"></span></div>
+      <button class="btn-logout" onclick="cerrarSesion()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+      <button id="btnQuitarFiltros" class="btn-quitar-filtros" onclick="limpiarFiltros()">Quitar todos los filtros</button>
+    </div>
+  </div>
+
+  <!-- Tablas (sin toolbar, sin padding encima) -->
+  <div class="table-wrap">
+
+    <!-- EXISTENCIA DETALLADA -->
+    <table id="tablaExist" class="main-tbl">
+      <thead id="theadExist"></thead>
+      <tbody id="tbodyExist"></tbody>
+      <tfoot id="tfootExist"></tfoot>
+    </table>
+
+    <!-- ENTRADAS 6 MESES -->
+    <div id="barraEntradas" style="display:none;padding:6px 4px 4px;display:none;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span id="lblMesesEntradas" style="font-size:.78rem;font-weight:700;color:#555;"></span>
+      <button id="btnCargarMas" onclick="cargarMasMeses()"
+        style="font-size:.76rem;font-weight:800;padding:4px 14px;border-radius:6px;
+               border:1.5px solid var(--primary);color:var(--primary);background:white;cursor:pointer;">
+        ＋ Cargar 6 meses más
+      </button>
+    </div>
+    <table id="tablaEntradas" class="main-tbl" style="display:none;">
+      <thead id="theadEntradas"></thead>
+      <tbody id="tbodyEntradas"></tbody>
+      <tfoot id="tfootEntradas"></tfoot>
+    </table>
+
+  </div>
+</div>
+
+<!-- ══ DROPDOWN FILTRO ══ -->
+<div id="excelDrop" class="excel-drop">
+  <div class="fd-search">
+    <span style="color:#64748b;">🔍</span>
+    <input type="text" id="fdSearch" placeholder="Buscar… Enter para filtrar"
+           oninput="fdFiltrarLista(this.value)" onkeydown="fdSearchKey(event)">
+  </div>
+  <div class="fd-sort">
+    <button onclick="fdOrdenar('asc')"><span style="color:#388e3c;">▲</span> A→Z</button>
+    <button onclick="fdOrdenar('desc')"><span style="color:#d32f2f;">▼</span> Z→A</button>
+    <button class="fd-btn-clear" onclick="fdBorrarFiltro()" title="Borrar filtro de esta columna">
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+           fill="none" stroke="#c62828" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+        <line x1="2" y1="2" x2="22" y2="22"/>
+      </svg>
+    </button>
+  </div>
+  <div class="fd-list" id="fdList"></div>
+  <div class="fd-actions">
+    <button class="fd-ok" onclick="fdAplicar()">Aceptar</button>
+    <button class="fd-cancel" onclick="fdCerrar()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL DESTINO ══ -->
+<div class="modal-overlay" id="modalDestino">
+  <div class="modal-destino-box">
+    <h3 style="font-weight:900;margin-bottom:16px;color:var(--primary);">Seleccionar Destino</h3>
+    <div id="destinoBtns"></div>
+    <button onclick="cerrarModalDestino()" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;background:white;font-weight:700;cursor:pointer;margin-top:4px;">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL REGISTRO INSPECCIÓN ══ -->
+<div class="modal-overlay" id="modalInsp">
+  <div class="modal-box">
+    <!-- Título -->
+    <div class="insp-header" id="inspTitulo">REGISTRO DE INSPECCIÓN - RECOCIDO</div>
+
+    <!-- Banner grado: ocupa todo el ancho, texto desde la izquierda, cuadro de color a la derecha -->
+    <div class="insp-banner" id="inspBanner">
+      <div class="insp-banner-grade" id="inspBannerGrade" onclick="abrirModalDestino()">
+        <span id="inspGradeTxt" style="z-index:1;padding-right:28%;">Clic para ingresar destino</span>
+        <div class="insp-grade-square" id="inspGradeSquare"></div>
+      </div>
+    </div>
+
+    <!-- Cuerpo: datos fijos izquierda + fotos derecha -->
+    <div class="insp-body">
+      <!-- Columna izquierda: datos del rollo (no editables) -->
+      <div class="insp-col">
+        <div class="insp-row"><span class="insp-label">Fecha de insp:</span>
+          <input type="date" id="inpFechaInsp" class="insp-val-input" style="max-width:145px;">
+        </div>
+        <div class="insp-row"><span class="insp-label">PROVEEDOR:</span> <span class="insp-val" id="inspProveedor"></span></div>
+        <div class="insp-row"><span class="insp-label">SAE:</span>      <span class="insp-val" id="inspSAE"></span></div>
+        <div class="insp-row"><span class="insp-label">Ø MP (MM):</span><span class="insp-val" id="inspDiam"></span></div>
+        <div class="insp-row"><span class="insp-label">Sello MP:</span>  <span class="insp-val" id="inspSello"></span></div>
+        <div class="insp-row"><span class="insp-label">COLADA:</span>    <span class="insp-val" id="inspColada"></span></div>
+        <div class="insp-row"><span class="insp-label">PESO (KG):</span> <span class="insp-val" id="inspPeso"></span></div>
+      </div>
+      <!-- Columna derecha: SOLO FOTOS -->
+      <div class="insp-col" style="display:flex;flex-direction:column;">
+        <div class="fotos-zona">
+          <div class="fotos-drop-area" id="fotosDropArea"
+               ondragover="fotoDragOver(event)" ondrop="fotoDrop(event)" onclick="inputFotos.click()">
+            <i class="fas fa-cloud-upload-alt" style="font-size:1.6rem;color:#94a3b8;"></i>
+            <span style="font-size:.78rem;color:#94a3b8;">Arrastra fotos aquí o toca para seleccionar</span>
+            <span style="font-size:.68rem;color:#bbb;">máx. 4 fotos</span>
+          </div>
+          <input type="file" id="inputFotos" accept="image/*" multiple style="display:none;" onchange="fotosSeleccionadas(event)">
+          <div class="fotos-grid" id="fotosGrid"></div>
+          <div class="fotos-estado" id="fotosEstado"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sección C y P -->
+    <div class="insp-cp-section">
+      <!-- COLA -->
+      <div class="insp-cp-row" style="grid-template-columns:40px 1fr;">
+        <div class="insp-cp-label">C</div>
+        <div class="insp-cp-grid" style="grid-template-columns:repeat(5,1fr);">
+          <div>
+            <div class="insp-cp-th">Decarburación<br>parcial (In)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpCDecParc" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Decarburación<br>libre (In)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpCDecLibre" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Reducción de<br>Área (%)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpRedAreaC" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Resistencia<br>Kg/mm² / KSI</div>
+            <div class="insp-cp-val-wrap" style="gap:3px;">
+              <input class="insp-val-input" id="inpResistC1" style="width:55px;text-align:center;">
+              <span style="font-weight:900;font-size:.8rem;align-self:center;">/</span>
+              <input class="insp-val-input" id="inpResistC2" style="width:55px;text-align:center;">
+            </div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Dureza Prom.<br>(HRB)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpDurezaC" style="width:60px;text-align:center;"></div>
+          </div>
+        </div>
+      </div>
+      <!-- PUNTA -->
+      <div class="insp-cp-row" style="grid-template-columns:40px 1fr;">
+        <div class="insp-cp-label">P</div>
+        <div class="insp-cp-grid" style="grid-template-columns:repeat(5,1fr);">
+          <div>
+            <div class="insp-cp-th">Decarburación<br>parcial (In)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpPDecParc" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Decarburación<br>libre (In)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpPDecLibre" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Reducción de<br>Área (%)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpRedAreaP" style="width:70px;text-align:center;"></div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Resistencia<br>Kg/mm² / KSI</div>
+            <div class="insp-cp-val-wrap" style="gap:3px;">
+              <input class="insp-val-input" id="inpResistP1" style="width:55px;text-align:center;">
+              <span style="font-weight:900;font-size:.8rem;align-self:center;">/</span>
+              <input class="insp-val-input" id="inpResistP2" style="width:55px;text-align:center;">
+            </div>
+          </div>
+          <div>
+            <div class="insp-cp-th">Dureza Prom.<br>(HRB)</div>
+            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpDurezaP" style="width:60px;text-align:center;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:6px 14px;font-size:.7rem;color:#555;border:2px solid #000;border-top:none;">
+      Fecha de consulta: <span id="inspFechaConsulta"></span>
+      <span style="float:right;">FO-CA-019 &nbsp; Rev. 2.0</span>
+    </div>
+
+    <div class="modal-footer-btns">
+      <button class="btn-cerrar-insp" onclick="cerrarModalInsp()">Cerrar</button>
+      <button class="btn-guardar-insp" onclick="guardarInspeccion()">
+        <i class="fas fa-save" style="margin-right:5px;"></i>Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTES Y ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════════════
+const SK_USER = 'lib_usuario';
+const SK_PASS = 'lib_pass';
+const CARPETA_FOTOS_ID = ''; // Dejar vacío = raíz de Drive; o poner el ID de una carpeta específica
+
+let usuarioActual = '';
+let dataGlobal    = [];   // datos de ENTRADAS_MP (pestaña Existencia — solo ACTIVOS)
+let dataEntradas  = [];   // datos de ENTRADAS_MP pestaña Entradas (todos, con fecha)
+let mesesEntradas = 6;    // meses cargados en pestaña Entradas (6, 12, 18, 24)
+let tabActual     = 'existencia';
+let _usuariosList = [];   // nombres para autocomplete
+let _usuariosDB   = [];   // objetos completos {nombre, password, ...}
+
+// Filtros y orden por tab — INDEPENDIENTES
+const estado = {
+  existencia: { filtros: {}, ordenStack: [], campoActual: null },
+  entradas:   { filtros: {}, ordenStack: [], campoActual: null }
+};
+
+// Dropdown
+let _fdCampo = null, _fdTodosVals = [], _fdCheckTemp = new Set();
+let _fdDropEl = null;
+
+// Inspección
+let inspFilaHoja = null;   // fila en Sheets del registro que se edita
+let inspRowData  = null;   // objeto de datos del renglón
+let inspFotosBase64 = [];  // máx 4 fotos comprimidas
+let destinoSeleccionado = '';
+
+// ═══════════════════════════════════════════════════════════════
+//  DEFINICIÓN DE COLUMNAS
+// ═══════════════════════════════════════════════════════════════
+// La tabla ENTRADAS_MP tiene columnas; usaremos índices 0-based desde la hoja.
+// Col R=17, S=18, T=19, U=20, V=21, W=22, X=23, Y=24, Z=25, AA=26
+// Las columnas "visibles" en cada pestaña:
+const COLS_EXIST = [
+  { key:'proveedor',   label:'PROVEEDOR' },
+  { key:'fecha',       label:'FECHA' },
+  { key:'diametro',    label:'DIÁMETRO' },
+  { key:'aceroFull',   label:'ACERO' },
+  { key:'n_rollo',     label:'N_ROLLO' },
+  { key:'kilos',       label:'KILOS',    num:true },
+  { key:'colada',      label:'COLADA' },
+  { key:'sello',       label:'SELLO' },
+  { key:'n_remision',  label:'REMISIÓN' },
+  { key:'consecutivo', label:'CONS.' },
+  { key:'_insp',       label:'INSPECCIÓN', noFiltro:true }
+];
+// Entradas: mismas columnas + estado + inspección
+const COLS_ENTRADAS = [
+  { key:'proveedor',   label:'PROVEEDOR' },
+  { key:'fecha',       label:'FECHA' },
+  { key:'diametro',    label:'DIÁMETRO' },
+  { key:'aceroFull',   label:'ACERO' },
+  { key:'n_rollo',     label:'N_ROLLO' },
+  { key:'kilos',       label:'KILOS',    num:true },
+  { key:'colada',      label:'COLADA' },
+  { key:'sello',       label:'SELLO' },
+  { key:'n_remision',  label:'REMISIÓN' },
+  { key:'consecutivo', label:'CONS.' },
+  { key:'estado',      label:'ESTADO' },
+  { key:'_insp',       label:'INSPECCIÓN', noFiltro:true }
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════════════════════════════
+function filtrarAC() {
+  const val = document.getElementById('userInput').value.trim().toUpperCase();
+  const list = document.getElementById('acList');
+  list.innerHTML = '';
+  if (!val || !_usuariosList.length) { list.style.display = 'none'; return; }
+  const matches = _usuariosList.filter(u => u.toUpperCase().includes(val));
+  if (!matches.length) { list.style.display = 'none'; return; }
+  matches.forEach(u => {
+    const d = document.createElement('div');
+    d.className = 'ac-item'; d.textContent = u;
+    d.onmousedown = () => {
+      document.getElementById('userInput').value = u;
+      list.style.display = 'none';
+      document.getElementById('passInput').focus();
+    };
+    list.appendChild(d);
+  });
+  list.style.display = 'block';
+}
+function cerrarAC() { document.getElementById('acList').style.display = 'none'; }
+
+function doLogin() {
+  const usuario = document.getElementById('userInput').value.trim().toUpperCase();
+  const pass    = document.getElementById('passInput').value;
+  if (!usuario || !pass) { mostrarErrorLogin('Completa usuario y contraseña.'); return; }
+  document.getElementById('login-error').style.display = 'none';
+
+  // Buscar en la lista ya cargada (igual que el MainApp de Embarques)
+  if (_usuariosList.length > 0) {
+    _validarConLista(usuario, pass);
+    return;
+  }
+  // Si la lista aún no cargó, pedirla primero
+  google.script.run
+    .withSuccessHandler(list => {
+      _usuariosList = (list || []).map(u => typeof u === 'string' ? u : (u.nombre || ''));
+      // También guardar lista completa con contraseñas para validar
+      _usuariosDB = list || [];
+      _validarConLista(usuario, pass);
+    })
+    .withFailureHandler(() => mostrarErrorLogin('Error de conexión.'))
+    .getUsuariosLogin();
+}
+
+function _validarConLista(usuario, pass) {
+  // getUsuariosLogin devuelve array de objetos {nombre, password, ...}
+  // o array de strings según la implementación
+  const u = _usuariosDB.find(x =>
+    (typeof x === 'object' ? x.nombre : x).toUpperCase() === usuario
+  );
+  if (!u) { mostrarErrorLogin('Usuario no encontrado.'); return; }
+  const passGuardada = typeof u === 'object' ? u.password : null;
+  if (passGuardada !== null && passGuardada !== pass) {
+    mostrarErrorLogin('Contraseña incorrecta.');
+    document.getElementById('passInput').value = '';
+    return;
+  }
+  // Login correcto
+  try { localStorage.setItem(SK_USER, usuario); localStorage.setItem(SK_PASS, pass); } catch(e) {}
+  entrarApp(usuario);
+}
+function mostrarErrorLogin(msg) {
+  document.getElementById('login-error-txt').textContent = msg;
+  document.getElementById('login-error').style.display = 'block';
+}
+function entrarApp(usuario) {
+  usuarioActual = usuario;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('labelUsuario').textContent = usuario;
+  cargarDatos();
+}
+function cerrarSesion() {
+  try { localStorage.removeItem(SK_USER); localStorage.removeItem(SK_PASS); } catch(e) {}
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('userInput').value = '';
+  document.getElementById('passInput').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+function mostrarLogin() {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+window.onload = () => {
+  _fdDropEl = document.getElementById('excelDrop');
+
+  // Cargar usuarios (misma función que el MainApp de Embarques)
+  google.script.run
+    .withSuccessHandler(list => {
+      _usuariosDB   = list || [];
+      _usuariosList = _usuariosDB.map(u => typeof u === 'object' ? (u.nombre || '') : u);
+    })
+    .withFailureHandler(() => {})
+    .getUsuariosLogin();
+
+  // Intentar auto-login con sesión guardada
+  let savedUser = null, savedPass = null;
+  try { savedUser = localStorage.getItem(SK_USER); savedPass = localStorage.getItem(SK_PASS); } catch(e) {}
+  if (savedUser && savedPass) {
+    // Esperar a que cargue la lista y luego validar
+    const intentarAutoLogin = (intentos) => {
+      if (_usuariosDB.length > 0) {
+        const u = _usuariosDB.find(x =>
+          (typeof x === 'object' ? x.nombre : x).toUpperCase() === savedUser.toUpperCase()
+        );
+        if (u && (typeof u === 'object' ? u.password : null) === savedPass) {
+          entrarApp(savedUser.toUpperCase());
+        } else {
+          mostrarLogin();
+        }
+      } else if (intentos > 0) {
+        setTimeout(() => intentarAutoLogin(intentos - 1), 300);
+      } else {
+        // Sin lista cargada, pedir login manual
+        mostrarLogin();
+      }
+    };
+    setTimeout(() => intentarAutoLogin(10), 200);
+  } else {
+    mostrarLogin();
+  }
+};
+
+
+// ═══════════════════════════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════════════════════════
+function cargarDatos() {
+  document.getElementById('loader').style.display = 'flex';
+  // Pestaña Existencia: solo registros ACTIVOS (getMateriaPrimaData ya filtra)
+  google.script.run
+    .withSuccessHandler(data => {
+      dataGlobal = data || [];
+      resetFiltros('existencia');
+      renderTabla();
+      document.getElementById('loader').style.display = 'none';
+      // Cargar pestaña Entradas en paralelo (6 meses base)
+      cargarEntradas(6, false);
+    })
+    .withFailureHandler(e => {
+      document.getElementById('loader').style.display = 'none';
+      swalOk({ icon:'error', title:'Error al cargar datos', text: String(e) });
+    })
+    .getMateriaPrimaData();
+}
+
+// Carga datos de Entradas desde GAS (todos los registros con fecha >= N meses atrás)
+function cargarEntradas(meses, mostrarLoader) {
+  mesesEntradas = meses;
+  if (mostrarLoader) document.getElementById('loader').style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(data => {
+      if (mostrarLoader) document.getElementById('loader').style.display = 'none';
+      dataEntradas = data || [];
+      resetFiltros('entradas');
+      if (tabActual === 'entradas') renderTabla();
+      actualizarBarraEntradas();
+    })
+    .withFailureHandler(e => {
+      if (mostrarLoader) document.getElementById('loader').style.display = 'none';
+      swalOk({ icon:'error', title:'Error al cargar entradas', text: String(e) });
+    })
+    .getEntradasMPMeses(meses);
+}
+
+function cargarMasMeses() {
+  const nuevos = mesesEntradas + 6;
+  if (nuevos > 24) {
+    swalOk({ icon:'info', title:'Límite alcanzado', text:'El máximo es 24 meses (2 años).',
+      timer:2000, showConfirmButton:false });
+    return;
+  }
+  cargarEntradas(nuevos, true);
+}
+
+function actualizarBarraEntradas() {
+  const barra = document.getElementById('barraEntradas');
+  const lbl   = document.getElementById('lblMesesEntradas');
+  const btn   = document.getElementById('btnCargarMas');
+  if (!barra) return;
+  barra.style.display = tabActual === 'entradas' ? 'flex' : 'none';
+  if (lbl) lbl.textContent = 'Mostrando últimos ' + mesesEntradas + ' meses — ' + dataEntradas.length + ' registros';
+  if (btn) btn.style.display = mesesEntradas >= 24 ? 'none' : '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+function cambiarTab(tab) {
+  tabActual = tab;
+  document.getElementById('tab-exist').classList.toggle('active', tab === 'existencia');
+  document.getElementById('tab-entradas').classList.toggle('active', tab === 'entradas');
+  document.getElementById('tablaExist').style.display     = tab === 'existencia' ? '' : 'none';
+  document.getElementById('tablaEntradas').style.display  = tab === 'entradas'   ? '' : 'none';
+  const barra = document.getElementById('barraEntradas');
+  if (barra) barra.style.display = tab === 'entradas' ? 'flex' : 'none';
+  actualizarBarraEntradas();
+  renderTabla();
+  actualizarBotonFiltros();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTROS — reset
+// ═══════════════════════════════════════════════════════════════
+function resetFiltros(tab) {
+  const cols = tab === 'existencia' ? COLS_EXIST : COLS_ENTRADAS;
+  const f    = estado[tab].filtros;
+  // Cada pestaña usa su propio dataset
+  const src  = tab === 'existencia' ? dataGlobal : dataEntradas;
+  cols.forEach(c => {
+    if (c.noFiltro) return;
+    f[c.key] = [...new Set(src.map(i => (i[c.key] !== undefined ? i[c.key] : '').toString()))];
+  });
+  estado[tab].ordenStack = [];
+}
+
+function limpiarFiltros() {
+  resetFiltros(tabActual);
+  renderTabla();
+  actualizarIconosFiltro();
+  actualizarBotonFiltros();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER TABLA
+// ═══════════════════════════════════════════════════════════════
+function renderTabla() {
+  const isExist = tabActual === 'existencia';
+  const cols    = isExist ? COLS_EXIST : COLS_ENTRADAS;
+  const bodyId  = isExist ? 'tbodyExist' : 'tbodyEntradas';
+  const headId  = isExist ? 'theadExist' : 'theadEntradas';
+  const footId  = isExist ? 'tfootExist' : 'tfootEntradas';
+  const est     = estado[tabActual];
+
+  // ── Filtrar ──
+  const srcData = tabActual === 'existencia' ? dataGlobal : dataEntradas;
+  let data = srcData.filter(row => {
+    return cols.every(c => {
+      if (c.noFiltro) return true;
+      const allowed = est.filtros[c.key];
+      if (!allowed) return true;
+      return allowed.includes((row[c.key] !== undefined ? row[c.key] : '').toString());
+    });
+  });
+
+  // ── Ordenar multi-columna ──
+  if (est.ordenStack.length > 0) {
+    data = [...data].sort((a, b) => {
+      for (const { campo, dir } of est.ordenStack) {
+        const va = (a[campo] !== undefined ? a[campo] : '').toString();
+        const vb = (b[campo] !== undefined ? b[campo] : '').toString();
+        const cmp = va.localeCompare(vb, undefined, { numeric:true, sensitivity:'base' });
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+      }
+      return 0;
+    });
+  }
+
+  // ── Encabezados ──
+  const thead = document.getElementById(headId);
+  let thHtml = '<tr>';
+  cols.forEach(c => {
+    const filtroActivo = !c.noFiltro && esFiltroActivo(tabActual, c.key);
+    const sortInfo = est.ordenStack.find(o => o.campo === c.key);
+    const arrow = sortInfo
+      ? `<span class="sort-indicator" style="color:${sortInfo.dir==='asc'?'#1b5e20':'#b71c1c'};">`
+        + (sortInfo.dir === 'asc' ? '▲' : '▼')
+        + (est.ordenStack.length > 1 ? `<sup style="font-size:8px;">${est.ordenStack.indexOf(sortInfo)+1}</sup>` : '')
+        + '</span>'
+      : '';
+    if (c.noFiltro) {
+      thHtml += `<th>${c.label}</th>`;
+    } else {
+      thHtml += `<th class="${filtroActivo ? 'th-filtrado' : ''}"
+                    onclick="abrirFiltro(event,'${c.key}')">
+                   <div class="th-inner">
+                     ${c.label}
+                     <i class="fas fa-filter filter-icon" style="${filtroActivo?'color:#c62828;':''}"></i>
+                     ${arrow}
+                   </div>
+                 </th>`;
+    }
+  });
+  thHtml += '</tr>';
+  thead.innerHTML = thHtml;
+
+  // ── Filas ──
+  const tbody = document.getElementById(bodyId);
+  let html = '';
+  let totalKilos = 0;
+
+  data.forEach((row, idx) => {
+    const zc = idx % 2 === 0 ? 'fila-par' : 'fila-impar';
+    html += `<tr class="${zc}">`;
+    cols.forEach(c => {
+      if (c.key === '_insp') {
+        const tieneInsp = row._insp || row.tieneInsp;
+        html += `<td>
+          <button class="btn-insp${tieneInsp?' con-datos':''}"
+                  onclick="abrirModalInsp('${idx}', '${idx}')">
+            ${tieneInsp ? '📋 Ver' : '+ Ingresar'}
+          </button>
+        </td>`;
+      } else if (c.key === 'diametro') {
+        const d = parseFloat(row[c.key]) || 0;
+        html += `<td>${d.toFixed(2)}</td>`;
+      } else if (c.num) {
+        const n = parseFloat(row[c.key]) || 0;
+        totalKilos += n;
+        html += `<td class="kilos-col">${n.toLocaleString()}</td>`;
+      } else {
+        html += `<td>${row[c.key] !== undefined ? row[c.key] : ''}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+
+  tbody.innerHTML = html || '<tr><td colspan="' + cols.length + '" style="text-align:center;padding:20px;color:#aaa;">Sin registros con los filtros aplicados</td></tr>';
+
+  // Totales
+  const tfoot = document.getElementById(footId);
+  const kilosIdx = cols.findIndex(c => c.num);
+  if (kilosIdx >= 0) {
+    let tfHtml = '<tr class="row-totales"><td colspan="' + kilosIdx + '" style="text-align:right;">TOTAL:</td>';
+    tfHtml += `<td>${totalKilos.toLocaleString()} kg</td>`;
+    tfHtml += '<td colspan="' + (cols.length - kilosIdx - 1) + '"></td>';
+    tfHtml += '</tr>';
+    tfoot.innerHTML = tfHtml;
+  } else {
+    tfoot.innerHTML = '';
+  }
+
+  actualizarIconosFiltro();
+  actualizarBotonFiltros();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTROS — helpers
+// ═══════════════════════════════════════════════════════════════
+function esFiltroActivo(tab, campo) {
+  const allowed = estado[tab].filtros[campo];
+  if (!allowed) return false;
+  const src  = tab === 'existencia' ? dataGlobal : dataEntradas;
+  const todos = [...new Set(src.map(i => (i[campo] !== undefined ? i[campo] : '').toString()))];
+  return allowed.length < todos.length;
+}
+
+function actualizarIconosFiltro() {
+  // Actualiza clases de th según filtros activos (ya está embebido en renderTabla)
+  // Solo actualizar el botón de quitar filtros
+  actualizarBotonFiltros();
+}
+
+function actualizarBotonFiltros() {
+  const btn = document.getElementById('btnQuitarFiltros');
+  const cols = tabActual === 'existencia' ? COLS_EXIST : COLS_ENTRADAS;
+  const hayActivo = cols.some(c => !c.noFiltro && esFiltroActivo(tabActual, c.key));
+  btn.classList.toggle('activo', hayActivo);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DROPDOWN FILTRO
+// ═══════════════════════════════════════════════════════════════
+let _fdOutside = null;
+
+function abrirFiltro(event, campo) {
+  event.stopPropagation();
+  const est = estado[tabActual];
+
+  // Toggle si mismo campo
+  if (_fdCampo === campo && _fdDropEl.style.display !== 'none') {
+    fdCerrar(); return;
+  }
+  _fdCampo = campo;
+  est.campoActual = campo;
+
+  // Valores únicos del campo (en cascada con otros filtros)
+  const cols = tabActual === 'existencia' ? COLS_EXIST : COLS_ENTRADAS;
+  const srcData2 = tabActual === 'existencia' ? dataGlobal : dataEntradas;
+  const dataSub = srcData2.filter(row =>
+    cols.every(c => {
+      if (c.noFiltro || c.key === campo) return true;
+      const allowed = est.filtros[c.key];
+      if (!allowed) return true;
+      return allowed.includes((row[c.key] !== undefined ? row[c.key] : '').toString());
+    })
+  );
+  const vals = [...new Set(dataSub.map(r => (r[campo] !== undefined ? r[campo] : '').toString()))]
+    .sort((a,b) => a.localeCompare(b, undefined, { numeric:true }));
+
+  _fdTodosVals = vals;
+  _fdCheckTemp = new Set(est.filtros[campo] || vals);
+
+  fdRenderLista('');
+  document.getElementById('fdSearch').value = '';
+
+  // Posicionar
+  const th = event.currentTarget;
+  const rect = th.getBoundingClientRect();
+  const dropW = 260;
+  let left = rect.left;
+  if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8;
+  _fdDropEl.style.display = 'block';
+  _fdDropEl.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+  _fdDropEl.style.left = left + 'px';
+
+  setTimeout(() => document.addEventListener('click', fdOutside, true), 50);
+}
+
+function fdOutside(e) {
+  if (!_fdDropEl.contains(e.target)) fdCerrar();
+}
+
+function fdRenderLista(q) {
+  const ql = q.toLowerCase();
+  const todosAct = _fdCheckTemp.size === _fdTodosVals.length;
+  let html = `<div class="fd-item" onclick="fdToggleTodos()">
+    <input type="checkbox" id="fd-chk-todos" ${todosAct?'checked':''} onclick="event.stopPropagation()">
+    <span style="font-weight:800;">(Seleccionar todo)</span></div>`;
+  _fdTodosVals.forEach(v => {
+    if (ql && !v.toLowerCase().includes(ql)) return;
+    const chk = _fdCheckTemp.has(v) ? 'checked' : '';
+    html += `<div class="fd-item" onclick="fdToggleItem('${v.replace(/'/g,"\\'")}')">
+      <input type="checkbox" ${chk} onclick="event.stopPropagation()">
+      <span>${v === '' ? '(vacío)' : v}</span></div>`;
+  });
+  document.getElementById('fdList').innerHTML = html;
+}
+
+function fdFiltrarLista(q) { fdRenderLista(q); }
+
+function fdSearchKey(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = document.getElementById('fdSearch').value.trim();
+  if (!q) return;
+  const visibles = _fdTodosVals.filter(v => v.toLowerCase().includes(q.toLowerCase()));
+  if (!visibles.length) return;
+  _fdCheckTemp = new Set(visibles);
+  fdAplicar();
+}
+
+function fdToggleTodos() {
+  const chkT = document.getElementById('fd-chk-todos');
+  const nuevo = !chkT.checked;
+  chkT.checked = nuevo;
+  _fdCheckTemp = nuevo ? new Set(_fdTodosVals) : new Set();
+  document.querySelectorAll('#fdList .fd-item:not(:first-child) input').forEach(cb => { cb.checked = nuevo; });
+}
+
+function fdToggleItem(val) {
+  document.querySelectorAll('#fdList .fd-item:not(:first-child)').forEach(item => {
+    const sp = item.querySelector('span');
+    const cb = item.querySelector('input');
+    const v  = sp.textContent === '(vacío)' ? '' : sp.textContent;
+    if (v === val) {
+      cb.checked = !cb.checked;
+      if (cb.checked) _fdCheckTemp.add(val);
+      else _fdCheckTemp.delete(val);
+    }
+  });
+  const chkT = document.getElementById('fd-chk-todos');
+  if (chkT) chkT.checked = _fdCheckTemp.size === _fdTodosVals.length;
+}
+
+function fdOrdenar(dir) {
+  const est   = estado[tabActual];
+  const campo = _fdCampo;
+  est.ordenStack = est.ordenStack.filter(o => o.campo !== campo);
+  est.ordenStack.unshift({ campo, dir });
+  fdAplicar();
+}
+
+function fdBorrarFiltro() {
+  const campo = _fdCampo;
+  const src = tabActual === 'existencia' ? dataGlobal : dataEntradas;
+  const todos = [...new Set(src.map(i => (i[campo] !== undefined ? i[campo] : '').toString()))];
+  estado[tabActual].filtros[campo] = todos;
+  fdCerrar();
+  renderTabla();
+}
+
+function fdAplicar() {
+  const est = estado[tabActual];
+  if (_fdCheckTemp.size === _fdTodosVals.length)
+    est.filtros[_fdCampo] = [..._fdTodosVals];
+  else
+    est.filtros[_fdCampo] = [..._fdCheckTemp];
+  fdCerrar();
+  renderTabla();
+}
+
+function fdCerrar() {
+  _fdDropEl.style.display = 'none';
+  _fdCampo = null;
+  document.removeEventListener('click', fdOutside, true);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORTAR EXCEL
+// ═══════════════════════════════════════════════════════════════
+function exportarExcel() {
+  const isExist = tabActual === 'existencia';
+  const cols    = isExist ? COLS_EXIST : COLS_ENTRADAS;
+  const est     = estado[tabActual];
+  const data = dataGlobal.filter(row =>
+    cols.every(c => {
+      if (c.noFiltro) return true;
+      const allowed = est.filtros[c.key];
+      if (!allowed) return true;
+      return allowed.includes((row[c.key] !== undefined ? row[c.key] : '').toString());
+    })
+  );
+  const headers = cols.filter(c => !c.noFiltro).map(c => c.label);
+  const rows = data.map(row => cols.filter(c => !c.noFiltro).map(c => row[c.key] !== undefined ? row[c.key] : ''));
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, tabActual === 'existencia' ? 'Existencia' : 'Entradas');
+  XLSX.writeFile(wb, 'LiberacionAlabrón_' + tabActual + '_' + Date.now() + '.xlsx');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL INSPECCIÓN — ABRIR
+// ═══════════════════════════════════════════════════════════════
+const DESTINOS = [
+  { id:'GRADO2',        label:'GRADO 2',          color1:'',        color2:'',        square:(acero)=>cuadradoPorAcero(acero), bannerColor:null },
+  { id:'GRADO5',        label:'GRADO 5',          color1:'#fffde7', color2:'#fffde7', square:'#87ceeb',   bannerColor:null },
+  { id:'GRADO8',        label:'GRADO 8',          color1:'#fffde7', color2:'#fffde7', square:'#87ceeb',   bannerColor:null },
+  { id:'ESTR_A490',     label:'ESTRUCTURAL A490', color1:'#f48fb1', color2:'#f48fb1', square:null,        bannerColor:'#e91e63' },
+  { id:'ESTR_A325',     label:'ESTRUCTURAL A325', color1:'#fff176', color2:'#fff176', square:null,        bannerColor:'#f9a825' },
+  { id:'PED_ESPECIAL',  label:'PEDIDO ESPECIAL',  color1:'#c8e6c9', color2:'#c8e6c9', square:null,        bannerColor:'#2e7d32' },
+  { id:'BISAGRA',       label:'BISAGRA',          color1:'#ffffff', color2:'#ffffff', square:'#000000',   bannerColor:null },
+  { id:'BOYA',          label:'BOYA',             color1:'#87ceeb', color2:'#87ceeb', square:null,        bannerColor:'#0288d1' },
+  { id:'PIJA',          label:'PIJA',             color1:'#ce93d8', color2:'#ce93d8', square:null,        bannerColor:'#7b1fa2' }
+];
+
+function cuadradoPorAcero(acero) {
+  const a = String(acero||'').toUpperCase().replace(/\s/g,'');
+  if (['1038'].includes(a)) return '#fdd835';
+  if (['4140'].includes(a)) return '#f48fb1';
+  if (['10B21','1021'].includes(a)) return '#9c27b0';
+  return '#000000'; // negro para 1004,1006,1008,1010,1018
+}
+
+function abrirModalInsp(filaIgnorada, rowIdx) {
+  const idx = parseInt(rowIdx);
+  const src = tabActual === 'existencia' ? dataGlobal : dataEntradas;
+  const row = src[idx];
+  if (!row) return;
+
+  // Usamos el id del registro (col A) como referencia para el GAS
+  inspFilaHoja = row.id || (idx + 2); // +2 porque Sheets tiene header en fila 1
+  inspRowData  = row;
+  inspFotosBase64 = [];
+  destinoSeleccionado = '';
+
+  // Poblar datos no editables
+  document.getElementById('inspSAE').textContent      = row.aceroFull || '';
+  document.getElementById('inspDiam').textContent     = parseFloat(row.diametro || 0).toFixed(2);
+  document.getElementById('inspProveedor').textContent= row.proveedor || '';
+  document.getElementById('inspSello').textContent    = row.sello     || '';
+  document.getElementById('inspColada').textContent   = row.colada    || '';
+  document.getElementById('inspPeso').textContent     = row.kilos     || '';
+
+  // Fecha inspección: si ya tiene la usa, si no hoy
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('inpFechaInsp').value = row.fechaInsp || hoy;
+
+  // Campos editables previos
+  document.getElementById('inpCDecParc').value  = row.cDecParc  || '';
+  document.getElementById('inpCDecLibre').value = row.cDecLibre || '';
+  document.getElementById('inpPDecParc').value  = row.pDecParc  || '';
+  document.getElementById('inpPDecLibre').value = row.pDecLibre || '';
+  document.getElementById('inpResistC1').value  = row.resistC   ? row.resistC.split('/')[0] : '';
+  document.getElementById('inpResistC2').value  = row.resistC   ? row.resistC.split('/')[1] : '';
+  document.getElementById('inpResistP1').value  = row.resistP   ? row.resistP.split('/')[0] : '';
+  document.getElementById('inpResistP2').value  = row.resistP   ? row.resistP.split('/')[1] : '';
+  document.getElementById('inpRedAreaC').value  = row.redAreaC  || '';
+  document.getElementById('inpRedAreaP').value  = row.redAreaP  || '';
+  document.getElementById('fotosGrid').innerHTML = '';
+  document.getElementById('fotosEstado').textContent = '';
+  const da = document.getElementById('fotosDropArea');
+  if (da) da.style.display = '';
+
+  // Fecha consulta
+  const fc = new Date();
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses= ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('inspFechaConsulta').textContent =
+    dias[fc.getDay()] + ', ' + fc.getDate() + ' de ' + meses[fc.getMonth()] + ' de ' + fc.getFullYear();
+
+  // Resetear banner
+  aplicarDestino(null, row.aceroFull);
+
+  document.getElementById('modalInsp').classList.add('open');
+}
+
+function cerrarModalInsp() {
+  document.getElementById('modalInsp').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODAL DESTINO
+// ═══════════════════════════════════════════════════════════════
+function abrirModalDestino() {
+  const acero = inspRowData ? (inspRowData.aceroFull || '') : '';
+  const btns = document.getElementById('destinoBtns');
+  btns.innerHTML = '';
+  DESTINOS.forEach(d => {
+    const sqColor = typeof d.square === 'function' ? d.square(acero) : d.square;
+    const c1 = d.color1 || '#ffffff';
+    const btn = document.createElement('button');
+    btn.className = 'destino-btn';
+    btn.style.background = c1 || '#f5f5f5';
+    btn.style.color = '#000';
+    btn.style.border = '2px solid #ccc';
+    btn.innerHTML = d.label + (sqColor ? ` <span style="display:inline-block;width:22px;height:14px;background:${sqColor};vertical-align:middle;margin-left:8px;border:1px solid #888;"></span>` : '');
+    btn.onclick = () => { aplicarDestino(d, acero); cerrarModalDestino(); };
+    btns.appendChild(btn);
+  });
+  document.getElementById('modalDestino').classList.add('open');
+}
+
+function cerrarModalDestino() {
+  document.getElementById('modalDestino').classList.remove('open');
+}
+
+function aplicarDestino(dest, acero) {
+  const banner      = document.getElementById('inspBanner');
+  const gradeEl     = document.getElementById('inspBannerGrade');
+  const gradeSquare = document.getElementById('inspGradeSquare');
+  const gradeTxt    = document.getElementById('inspGradeTxt');
+
+  if (!dest) {
+    banner.style.background   = '#fff';
+    gradeEl.style.background  = '#fff';
+    gradeTxt.textContent      = 'Clic para ingresar destino';
+    gradeSquare.style.background = '';
+    return;
+  }
+
+  destinoSeleccionado = dest.id;
+  const sqColor = typeof dest.square === 'function' ? dest.square(acero) : dest.square;
+  const c1 = dest.color1 || '#fff';
+
+  banner.style.background  = c1;
+  gradeEl.style.background = c1;
+  gradeTxt.textContent     = dest.label;
+  gradeSquare.style.background = sqColor || '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FOTOS — compresión igual que OrdenTrabajoHTML
+// ═══════════════════════════════════════════════════════════════
+function comprimirImagen(file, callback) {
+  const MAX_KB  = 200;
+  const MAX_DIM = 1280;
+  const reader  = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+        else       { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      let calidad  = 0.8;
+      let resultado = canvas.toDataURL('image/jpeg', calidad);
+      while (resultado.length > MAX_KB * 1024 * 1.37 && calidad > 0.2) {
+        calidad  -= 0.1;
+        resultado = canvas.toDataURL('image/jpeg', calidad);
+      }
+      const kb = Math.round(resultado.length * 0.75 / 1024);
+      callback(resultado, kb);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function procesarFoto(file) {
+  if (inspFotosBase64.length >= 4) {
+    document.getElementById('fotosEstado').textContent = '⚠ Máximo 4 fotos permitidas.';
+    return;
+  }
+  document.getElementById('fotosEstado').textContent = '⏳ Procesando...';
+  comprimirImagen(file, (b64, kb) => {
+    inspFotosBase64.push(b64);
+    renderFotosGrid();
+    document.getElementById('fotosEstado').textContent =
+      `✅ ${inspFotosBase64.length}/4 fotos (~${kb} KB la última)`;
+  });
+}
+
+function fotosSeleccionadas(e) {
+  Array.from(e.target.files).forEach(f => procesarFoto(f));
+  e.target.value = '';
+}
+
+function fotoDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function fotoDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')).forEach(f => procesarFoto(f));
+}
+
+function renderFotosGrid() {
+  const grid     = document.getElementById('fotosGrid');
+  const dropArea = document.getElementById('fotosDropArea');
+  const n        = inspFotosBase64.length;
+
+  // Si hay fotos, ocultar drop-area y mostrar grid
+  if (dropArea) dropArea.style.display = n > 0 ? 'none' : '';
+
+  grid.innerHTML = '';
+  if (n === 0) return;
+
+  // Ajustar columnas según cantidad
+  grid.setAttribute('data-count', n);
+  // Altura proporcional: el grid ocupa el espacio del drop-area (≈200px)
+  const thumbH = n <= 2 ? '180px' : '130px';
+
+  inspFotosBase64.forEach((b64, i) => {
+    const div = document.createElement('div');
+    div.className = 'foto-thumb';
+    div.style.height = thumbH;
+    div.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover;">
+      <button class="btn-rm" onclick="quitarFoto(${i})">×</button>`;
+    grid.appendChild(div);
+  });
+}
+
+function quitarFoto(idx) {
+  inspFotosBase64.splice(idx, 1);
+  renderFotosGrid();
+  const dropArea = document.getElementById('fotosDropArea');
+  if (dropArea) dropArea.style.display = inspFotosBase64.length > 0 ? 'none' : '';
+  document.getElementById('fotosEstado').textContent =
+    inspFotosBase64.length > 0 ? `${inspFotosBase64.length}/4 fotos` : '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GUARDAR INSPECCIÓN
+// ═══════════════════════════════════════════════════════════════
+function guardarInspeccion() {
+  if (!inspFilaHoja) {
+    swalOk({ icon:'error', title:'Error', text:'Sin referencia de fila. Cierra y vuelve a abrir el registro.' });
+    return;
+  }
+
+  const payload = {
+    registroId: inspFilaHoja,   // ID de col A para localizar la fila en GAS
+    usuario:    usuarioActual,
+    fechaInsp:  document.getElementById('inpFechaInsp').value,
+    cDecParc:   document.getElementById('inpCDecParc').value,
+    cDecLibre:  document.getElementById('inpCDecLibre').value,
+    pDecParc:   document.getElementById('inpPDecParc').value,
+    pDecLibre:  document.getElementById('inpPDecLibre').value,
+    resistC:    document.getElementById('inpResistC1').value + '/' + document.getElementById('inpResistC2').value,
+    resistP:    document.getElementById('inpResistP1').value + '/' + document.getElementById('inpResistP2').value,
+    redAreaC:   document.getElementById('inpRedAreaC').value,
+    redAreaP:   document.getElementById('inpRedAreaP').value,
+    destino:    destinoSeleccionado,
+    fotos:      inspFotosBase64
+  };
+
+  document.getElementById('loader').style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('loader').style.display = 'none';
+      if (res && res.ok) {
+        cerrarModalInsp();
+        cargarDatos();
+        swalOk({ icon:'success', title:'¡Guardado!', text:'Inspección registrada correctamente.',
+          timer:2000, showConfirmButton:false, timerProgressBar:true });
+      } else {
+        swalOk({ icon:'error', title:'Error al guardar', text: res ? res.msg : 'Sin respuesta del servidor.' });
+      }
+    })
+    .withFailureHandler(e => {
+      document.getElementById('loader').style.display = 'none';
+      swalOk({ icon:'error', title:'Error de conexión', text: String(e) });
+    })
+    .guardarInspeccionAlambron(payload);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SWEET ALERT SEGURO — usa Swal si existe, alert nativo si no
+// ═══════════════════════════════════════════════════════════════
+function swalOk(opts) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire(opts);
+  } else {
+    alert((opts.title ? opts.title + '\n' : '') + (opts.text || ''));
+  }
+}
+function mostrarToast(msg, tipo) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({ toast:true, position:'bottom', icon:tipo||'info',
+      title:msg, showConfirmButton:false, timer:3000, timerProgressBar:true });
+  } else {
+    alert(msg);
+  }
+}
+</script>
+</body>
+</html>

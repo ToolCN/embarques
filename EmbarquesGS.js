@@ -1307,6 +1307,9 @@ function doGet(e) {
     if (v === 'existencia') {
       filename = 'ExistenciaHTML';
       title    = 'MATERIA PRIMA';
+    } else if (v === 'liberacion') {
+      filename = 'Liberacion_Alambron';
+      title    = 'LIBERACIÓN DE ALAMBRÓN';
     }
     return HtmlService.createHtmlOutputFromFile(filename)
       .addMetaTag('viewport', 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no')
@@ -1735,3 +1738,119 @@ function actualizarEstadoMP(id, nuevoEstado, infoSalida, nombreUsuario) {
   return true;
 }
 
+function getEntradasMPMeses(meses) {
+  try {
+    const ss    = SpreadsheetApp.openById(ID_HOJA_OM);
+    const sheet = ss.getSheetByName("ENTRADAS_MP");
+    const data  = sheet.getDataRange().getValues();
+    const limite = new Date();
+    limite.setMonth(limite.getMonth() - (meses || 6));
+    limite.setHours(0,0,0,0);
+    const col = {
+      ID:0, PROVEEDOR:1, FECHA:2, DIAMETRO:3, ACERO:4, N_ROLLO:5, KILOS:6,
+      COLADA:7, SELLO:8, N_REMISION:9, CONSECUTIVO:10, ESTADO:11,
+      FECHA_INSP:18, C_DEC_PARC:19, C_DEC_LIBRE:20,
+      P_DEC_PARCIAL:21, P_DEC_LIBRE:22, RESIST_C:23, RESIST_P:24
+    };
+    return data.slice(1)
+      .filter(r => {
+        const f = r[col.FECHA] instanceof Date ? r[col.FECHA] : new Date(r[col.FECHA]);
+        return !isNaN(f) && f >= limite;
+      })
+      .map(r => ({
+        id:         r[col.ID],
+        proveedor:  r[col.PROVEEDOR],
+        fecha:      r[col.FECHA] instanceof Date
+                      ? Utilities.formatDate(r[col.FECHA],"GMT-6","dd/MM/yyyy")
+                      : r[col.FECHA],
+        diametro:   parseFloat(r[col.DIAMETRO]) || 0,
+        aceroFull:  String(r[col.ACERO]),
+        aceroLimpio:String(r[col.ACERO]).replace(/\D/g,""),
+        n_rollo:    r[col.N_ROLLO],
+        kilos:      parseFloat(r[col.KILOS]) || 0,
+        colada:     r[col.COLADA],
+        sello:      r[col.SELLO],
+        n_remision: r[col.N_REMISION],
+        consecutivo:r[col.CONSECUTIVO],
+        estado:     String(r[col.ESTADO] || ""),
+        f_insp:     r[col.FECHA_INSP] instanceof Date
+                      ? Utilities.formatDate(r[col.FECHA_INSP],"GMT-6","dd/MM/yyyy")
+                      : r[col.FECHA_INSP],
+        c_parc: r[col.C_DEC_PARC],  c_total: r[col.C_DEC_LIBRE],
+        p_parc: r[col.P_DEC_PARCIAL], p_total: r[col.P_DEC_LIBRE],
+        res_c:  r[col.RESIST_C],    res_p:   r[col.RESIST_P],
+        tieneInsp: !!(r[col.FECHA_INSP] || r[col.RESIST_C])
+      }));
+  } catch(e) { return []; }
+}
+
+
+var ID_CARPETA_INSPECCIONES = '1RxKI4G5P1Q27Ewd6FD-PNHsm04AZJ0en';
+
+function guardarInspeccionAlambron(payload) {
+  try {
+    var ss    = SpreadsheetApp.openById(ID_HOJA_OM);
+    var sheet = ss.getSheetByName("ENTRADAS_MP");
+    var data  = sheet.getDataRange().getValues();
+
+    // Buscar fila por ID (Col A)
+    var rowIndex = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(payload.registroId).trim()) {
+        rowIndex = i; break;
+      }
+    }
+    if (rowIndex === -1) throw new Error("No se encontró ID: " + payload.registroId);
+    var sheetRow = rowIndex + 1;
+
+    // Subir fotos — intenta carpeta, si falla usa raíz
+    var urlFotos = '';
+    if (payload.fotos && payload.fotos.length > 0) {
+      var folder = null;
+      try { folder = DriveApp.getFolderById(ID_CARPETA_INSPECCIONES); } catch(ef) { folder = DriveApp.getRootFolder(); }
+      
+      var urls = payload.fotos.map(function(b64, i) {
+        var clean = b64.replace(/^data:image\/\w+;base64,/, '');
+        var blob  = Utilities.newBlob(Utilities.base64Decode(clean), 'image/jpeg',
+                      'insp_' + payload.registroId + '_' + (i+1) + '.jpg');
+        var file  = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        return 'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing';
+      });
+      urlFotos = urls.join(',');
+    }
+
+    // Historial en Col R (índice 17)
+    var ahora   = Utilities.formatDate(new Date(), "GMT-6", "dd/MM/yyyy HH:mm:ss");
+    var usuario = String(payload.usuario || "DESCONOCIDO").trim().toUpperCase();
+    var histAnterior = String(data[rowIndex][17] || "").trim();
+    var histNuevo    = ahora + " | " + usuario + " registró inspección";
+    var histFinal    = histAnterior ? histAnterior + "\n" + histNuevo : histNuevo;
+
+    sheet.getRange(sheetRow, 18).setValue(histFinal);          // Col R
+    sheet.getRange(sheetRow, 19).setValue(payload.fechaInsp);  // Col S
+    sheet.getRange(sheetRow, 20).setValue(payload.cDecParc);   // Col T
+    sheet.getRange(sheetRow, 21).setValue(payload.cDecLibre);  // Col U
+    sheet.getRange(sheetRow, 22).setValue(payload.pDecParc);   // Col V
+    sheet.getRange(sheetRow, 23).setValue(payload.pDecLibre);  // Col W
+    sheet.getRange(sheetRow, 24).setValue(payload.resistC);    // Col X
+    sheet.getRange(sheetRow, 25).setValue(payload.resistP);    // Col Y
+    sheet.getRange(sheetRow, 26).setValue(payload.redAreaC);   // Col Z
+    sheet.getRange(sheetRow, 27).setValue(payload.redAreaP);   // Col AA
+    sheet.getRange(sheetRow, 28).setValue(payload.destino);    // Col AB
+    if (urlFotos) sheet.getRange(sheetRow, 29).setValue(urlFotos); // Col AC
+
+    return { ok: true };
+  } catch(e) {
+    Logger.log("guardarInspeccionAlambron error: " + e.toString());
+    return { ok: false, msg: e.toString() };
+  }
+}
+
+function autorizarPermisos() {
+  // Fuerza el dialogo de autorización para todos los servicios usados
+  try { DriveApp.getRootFolder(); Logger.log("✅ Drive: OK"); } catch(e) { Logger.log("Drive: " + e); }
+  try { SpreadsheetApp.openById(ID_HOJA_OM); Logger.log("✅ Sheets: OK"); } catch(e) { Logger.log("Sheets: " + e); }
+  try { SpreadsheetApp.openById(ID_HOJA_ESTANDARES); Logger.log("✅ Estandares: OK"); } catch(e) { Logger.log("Estandares: " + e); }
+  Logger.log("✅ Autorización completada");
+}

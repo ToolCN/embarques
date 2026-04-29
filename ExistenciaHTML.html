@@ -21,8 +21,25 @@
     .nav-tabs .nav-link.active { color: #004a99; border-bottom: 3px solid #004a99; }
 
     .table-main thead { background: #004a99; color: white; position: sticky; top: 0; z-index: 10; }
-    .clickable-header { cursor: pointer; border-left: 1px solid #d4a800 !important; white-space: nowrap; text-align: center; }
+
+    /* ── Encabezados clicables estilo FORJA ── */
+    .clickable-header {
+      cursor: pointer;
+      border-left: 1px solid #d4a800 !important;
+      white-space: nowrap;
+      text-align: center;
+      user-select: none;
+    }
+    .clickable-header .th-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 8px;
+    }
     .clickable-header:hover { background: #ffe066 !important; }
+    .clickable-header.th-filtrado { background: #fdd835 !important; color: #000 !important; }
+    .clickable-header.th-filtrado .filter-icon { color: #c62828; animation: pulse-icon 1.2s infinite; }
 
     /* Totales Guinda */
     .row-totales { background-color: #f8f8f8 !important; color: #800000; font-weight: bold; font-size: 1rem; }
@@ -33,19 +50,107 @@
     .val-red { color: red; font-weight: bold; }
     .no-data-watermark { color: #ddd; font-weight: 900; font-size: 1.1rem; letter-spacing: 2px; opacity: 0.6; }
 
-    .filter-list { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
-
-    /* Ícono de filtro activo: guinda con pulsos */
-    .filter-icon-active {
-      color: #800000 !important;
-      animation: pulse-icon 1.2s infinite;
+    /* ── DROPDOWN FILTRO ESTILO FORJA/EXCEL ── */
+    .excel-filter-drop {
+      position: fixed;
+      z-index: 9999;
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      min-width: 240px;
+      max-width: 300px;
+      padding: 0;
+      overflow: hidden;
+      font-size: .78rem;
     }
+    .excel-filter-drop .fd-search {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .excel-filter-drop .fd-search input {
+      flex: 1;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: .78rem;
+      outline: none;
+    }
+    .excel-filter-drop .fd-sort {
+      display: flex;
+      gap: 4px;
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .excel-filter-drop .fd-sort button {
+      flex: 1;
+      padding: 5px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background .12s;
+    }
+    .excel-filter-drop .fd-sort button:hover { background: #f1f5f9; }
+    .excel-filter-drop .fd-list {
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .excel-filter-drop .fd-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: .78rem;
+      transition: background .1s;
+    }
+    .excel-filter-drop .fd-item:hover { background: #f1f5f9; }
+    .excel-filter-drop .fd-item input[type=checkbox] {
+      cursor: pointer;
+      accent-color: #1a237e;
+      width: 14px;
+      height: 14px;
+    }
+    .excel-filter-drop .fd-actions {
+      display: flex;
+      gap: 6px;
+      padding: 8px 10px;
+      border-top: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .excel-filter-drop .fd-actions button {
+      flex: 1;
+      padding: 6px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 800;
+      font-size: .75rem;
+      cursor: pointer;
+    }
+    .excel-filter-drop .fd-ok { background: #1a237e; color: white; }
+    .excel-filter-drop .fd-ok:hover { background: #283593; }
+    .excel-filter-drop .fd-cancel { background: #e2e8f0; color: #374151; }
+    .excel-filter-drop .fd-cancel:hover { background: #cbd5e1; }
+
     @keyframes pulse-icon {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.5; transform: scale(1.35); }
     }
 
-    /* Botón quitar filtros activo: azul, negritas, pulsos */
+    /* Botón quitar filtros activo */
     .btn-filtros-activo {
       background-color: #0d6efd !important;
       color: #fff !important;
@@ -58,36 +163,27 @@
       50% { box-shadow: 0 0 0 6px rgba(13, 110, 253, 0); }
     }
 
-    /* Ícono toggle guinda */
     .btn-toggle-detalle { color: #004a99; }
     .btn-toggle-detalle.expanded { color: #800000; }
 
-    /* Badge ESTADO */
     .estado-ok { background-color: #198754; color: white; border-radius: 4px; padding: 2px 7px; font-weight: bold; font-size: 0.75rem; }
     .estado-bajo { background-color: #dc3545; color: white; border-radius: 4px; padding: 2px 7px; font-weight: bold; font-size: 0.75rem; }
 
-    /* Kilos azul negritas */
     .kilos-total { color: #003a99; font-weight: bold; }
 
-    /* Cuadrícula tabla principal */
     .table-main td, .table-main th { border: 1px solid #b0b8c9 !important; text-align: center; vertical-align: middle; }
     .table-main { border-collapse: collapse !important; }
 
-    /* Encabezado tabla principal en amarillo — forzado sobre Bootstrap */
     .table-main thead tr th { background-color: #ffc107 !important; color: #000 !important; border-color: #d4a800 !important; }
 
-    /* Encabezado sub-tabla azul cielo */
     table.subtabla-zebra thead tr th { background-color: #87ceeb !important; color: #002060 !important; border: 1px solid #5599cc !important; text-align: center !important; vertical-align: middle !important; }
 
-    /* Zebra tabla principal: amarillo tenue alternado — !important para pisar Bootstrap hover */
     .table-main tbody tr.fila-par td { background-color: #fffbe6 !important; }
     .table-main tbody tr.fila-impar td { background-color: #ffffff !important; }
 
-    /* Zebra sub-tabla: azul tenue alternado */
     .subtabla-zebra tbody tr.fila-par td { background-color: #daeeff !important; }
     .subtabla-zebra tbody tr.fila-impar td { background-color: #ffffff !important; }
 
-    /* Botón colapsar todos con pulsos */
     .btn-colapsar-todos {
       color: #800000;
       font-weight: bold;
@@ -99,7 +195,6 @@
       animation: pulse-icon 1.2s infinite;
     }
 
-    /* Badge SIN EXISTENCIA */
     .estado-sin-exist {
       background-color: #dc3545;
       color: white;
@@ -115,6 +210,10 @@
       25% { transform: translateX(-2px); }
       75% { transform: translateX(2px); }
     }
+
+    /* ── Filas resumen clicables para selección ── */
+    .fila-resumen-seleccionable { cursor: pointer; }
+    .fila-resumen-seleccionable:hover td { filter: brightness(0.94); }
   </style>
 </head>
 <body>
@@ -151,16 +250,25 @@
 
 <div class="container-fluid py-2">
   <div class="table-responsive bg-white rounded shadow-sm" style="max-height: 70vh;">
+
     <!-- TABLA VISTA 1: RESUMEN -->
     <table id="tablaResumen" class="table table-sm table-hover mb-0 table-main">
       <thead>
         <tr>
-          <th class="clickable-header" onclick="abrirFiltro('diametro')">DIÁMETRO <i id="fi-diametro" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('aceroLimpio')">ACERO <i id="fi-aceroLimpio" class="fas fa-filter"></i></th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'diametro')">
+            <div class="th-inner">DIÁMETRO <i id="fi-diametro" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'aceroLimpio')">
+            <div class="th-inner">ACERO <i id="fi-aceroLimpio" class="fas fa-filter filter-icon"></i></div>
+          </th>
           <th>ROLLOS</th>
           <th>KILOS TOTAL</th>
-          <th class="clickable-header" onclick="abrirFiltro('minimo')">MÍNIMO <i id="fi-minimo" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('estado')">ESTADO <i id="fi-estado" class="fas fa-filter"></i></th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'minimo')">
+            <div class="th-inner">MÍNIMO <i id="fi-minimo" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'estado')">
+            <div class="th-inner">ESTADO <i id="fi-estado" class="fas fa-filter filter-icon"></i></div>
+          </th>
           <th class="text-center">DETALLE <button id="btnColapsarTodos" class="btn-colapsar-todos d-none" onclick="colapsarTodos()" title="Colapsar todos">&#8722;</button></th>
         </tr>
       </thead>
@@ -172,16 +280,36 @@
     <table id="tablaDetallada" class="table table-sm table-hover mb-0 table-main d-none">
       <thead>
         <tr>
-          <th class="clickable-header" onclick="abrirFiltro('proveedor')">PROVEEDOR <i id="fi-proveedor" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('fecha')">FECHA <i id="fi-fecha" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('diametro')">DIAM. <i id="fi-diametro2" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('aceroFull')">ACERO <i id="fi-aceroFull" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('n_rollo')">N_ROLLO <i id="fi-n_rollo" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('kilos')">KILOS <i id="fi-kilos" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('colada')">COLADA <i id="fi-colada" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('sello')">SELLO <i id="fi-sello" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('n_remision')">REMISION <i id="fi-n_remision" class="fas fa-filter"></i></th>
-          <th class="clickable-header" onclick="abrirFiltro('consecutivo')">CONS. <i id="fi-consecutivo" class="fas fa-filter"></i></th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'proveedor')">
+            <div class="th-inner">PROVEEDOR <i id="fi-proveedor" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'fecha')">
+            <div class="th-inner">FECHA <i id="fi-fecha" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'diametro')">
+            <div class="th-inner">DIAM. <i id="fi-diametro2" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'aceroFull')">
+            <div class="th-inner">ACERO <i id="fi-aceroFull" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'n_rollo')">
+            <div class="th-inner">N_ROLLO <i id="fi-n_rollo" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'kilos')">
+            <div class="th-inner">KILOS <i id="fi-kilos" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'colada')">
+            <div class="th-inner">COLADA <i id="fi-colada" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'sello')">
+            <div class="th-inner">SELLO <i id="fi-sello" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'n_remision')">
+            <div class="th-inner">REMISION <i id="fi-n_remision" class="fas fa-filter filter-icon"></i></div>
+          </th>
+          <th class="clickable-header" onclick="abrirFiltro(event,'consecutivo')">
+            <div class="th-inner">CONS. <i id="fi-consecutivo" class="fas fa-filter filter-icon"></i></div>
+          </th>
           <th>INSPECCIÓN DETALLADA</th>
         </tr>
       </thead>
@@ -191,26 +319,23 @@
   </div>
 </div>
 
-<!-- MODAL FILTRO -->
-<div class="modal fade" id="modalFiltro" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header py-1">
-        <h6 class="modal-title fw-bold" id="titFiltro"></h6>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <input type="text" id="busFiltro" class="form-control form-control-sm mb-2" placeholder="Buscar..." oninput="filtrarChecks()">
-        <div class="d-flex justify-content-between mb-2 small">
-          <span style="color: blue; cursor: pointer; text-decoration: underline;" onclick="toggleTodos(event, true)">Marcar todos</span>
-          <span style="color: blue; cursor: pointer; text-decoration: underline;" onclick="toggleTodos(event, false)">Desmarcar</span>
-        </div>
-        <div id="listaChecks" class="filter-list"></div>
-      </div>
-      <div class="modal-footer py-1">
-        <button type="button" class="btn btn-primary btn-sm w-100" onclick="aplicarFiltros()">Aplicar</button>
-      </div>
-    </div>
+<!-- ══ DROPDOWN FILTRO ESTILO FORJA ══ -->
+<div id="excelFilterDrop" class="excel-filter-drop" style="display:none;">
+  <div class="fd-search">
+    <span style="color:#64748b;">🔍</span>
+    <input type="text" id="fdSearchInp" placeholder="Buscar… Enter para filtrar" oninput="fdFiltrarLista(this.value)" onkeydown="fdSearchKeydown(event)">
+  </div>
+  <div class="fd-sort">
+    <button onclick="fdOrdenar('asc')" title="Orden ascendente"><span style="color:#388e3c;">▲</span> A → Z</button>
+    <button onclick="fdOrdenar('desc')" title="Orden descendente"><span style="color:#d32f2f;">▼</span> Z → A</button>
+    <button onclick="fdBorrarFiltroColumna()" title="Borrar filtro de esta columna" style="flex:0.6; background:#fff3f3; border-color:#f5c6c6; color:#c62828;" id="fdBtnBorrarFiltro">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/><line x1="2" y1="2" x2="22" y2="22" stroke="#c62828" stroke-width="2.5"/></svg>
+    </button>
+  </div>
+  <div class="fd-list" id="fdList"></div>
+  <div class="fd-actions">
+    <button class="fd-ok" onclick="fdAplicar()">Aceptar</button>
+    <button class="fd-cancel" onclick="fdCerrar()">Cancelar</button>
   </div>
 </div>
 
@@ -222,7 +347,16 @@
   let filtros = {};
   let vistaActual = 'resumen';
   let tipoActual = '';
-  const modalFiltro = new bootstrap.Modal(document.getElementById('modalFiltro'));
+
+  // Estado del dropdown estilo FORJA
+  let _fdDropActivo = null;
+  let _fdCheckTemp = new Set();
+  let _fdTodosVals = [];
+
+  // Stack multi-columna estilo Excel: [{campo, dir}, ...]
+  // El índice 0 es el ordenamiento más reciente (dominante).
+  // Los siguientes sirven de desempate, igual que Excel.
+  let _ordenStack = [];
 
   const MINIMOS = {
     "5.50|1004": 15000,
@@ -306,7 +440,6 @@
   function resetFiltrosObject() {
     const cols = ['proveedor', 'fecha', 'diametro', 'aceroFull', 'aceroLimpio', 'n_rollo', 'kilos', 'colada', 'sello', 'n_remision', 'consecutivo'];
     cols.forEach(c => filtros[c] = [...new Set(dataGlobal.map(i => i[c].toString()))]);
-    // Incluir mínimos también de las entradas del catálogo sin existencia
     const todosLosMinimos = [...new Set([
       ...dataGlobal.map(i => getMinimoTexto(i.diametro, i.aceroLimpio)),
       ...Object.keys(MINIMOS).map(k => { const [d,a] = k.split('|'); return getMinimoTexto(d, a); })
@@ -317,6 +450,7 @@
 
   function limpiarFiltros() {
     resetFiltrosObject();
+    _ordenStack = [];
     renderizar();
     actualizarIconosFiltro();
     actualizarBotonFiltros();
@@ -331,17 +465,29 @@
     renderizar();
   }
 
-  function abrirFiltro(tipo) {
+  // ═══════════════════════════════════════════════════════════════
+  //  DROPDOWN FILTRO ESTILO FORJA
+  // ═══════════════════════════════════════════════════════════════
+  function abrirFiltro(event, tipo) {
+    event.stopPropagation();
     tipoActual = tipo;
+
+    // Si el mismo dropdown ya está abierto para este campo, cerrarlo
+    const drop = document.getElementById('excelFilterDrop');
+    if (_fdDropActivo === tipo && drop.style.display !== 'none') {
+      fdCerrar();
+      return;
+    }
+    _fdDropActivo = tipo;
+
+    // Calcular opciones
     let opciones;
     if (tipo === 'minimo' || tipo === 'estado') {
       if (tipo === 'minimo') {
-        const dataSub = dataGlobal.filter(i => {
-          return Object.keys(filtros).every(k => {
-            if (k === 'minimo' || k === 'estado') return true;
-            return filtros[k].includes(i[k].toString());
-          });
-        });
+        const dataSub = dataGlobal.filter(i => Object.keys(filtros).every(k => {
+          if (k === 'minimo' || k === 'estado') return true;
+          return filtros[k].includes(i[k].toString());
+        }));
         const grupos = {};
         dataSub.forEach(i => {
           const key = i.diametro + '|' + i.aceroLimpio;
@@ -352,42 +498,172 @@
         opciones = ["OK", "BAJO", "SIN EXISTENCIA", "SIN MÍNIMO"];
       }
     } else {
-      const dataSub = dataGlobal.filter(i => {
-        return Object.keys(filtros).every(k => {
-          if (k === 'minimo' || k === 'estado') return true;
-          return k === tipo || filtros[k].includes(i[k].toString());
-        });
-      });
+      const dataSub = dataGlobal.filter(i => Object.keys(filtros).every(k => {
+        if (k === 'minimo' || k === 'estado') return true;
+        return k === tipo || filtros[k].includes(i[k].toString());
+      }));
       opciones = [...new Set(dataSub.map(i => i[tipo].toString()))].sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
     }
-    document.getElementById('titFiltro').innerText = 'Filtrar ' + tipo.toUpperCase();
-    document.getElementById('listaChecks').innerHTML = opciones.map(opt =>
-      '<div class="form-check">' +
-        '<input class="form-check-input check-item" type="checkbox" value="' + opt + '" ' + (filtros[tipo].includes(opt) ? 'checked' : '') + '>' +
-        '<label class="form-check-label">' + opt + '</label>' +
-      '</div>'
-    ).join('');
-    modalFiltro.show();
+
+    _fdTodosVals = opciones;
+    _fdCheckTemp = new Set(filtros[tipo] || opciones);
+
+    // Construir lista
+    _fdRenderLista(opciones, '');
+
+    // Posicionar el dropdown justo debajo del <th> que disparó el evento
+    const th = event.currentTarget;
+    const rect = th.getBoundingClientRect();
+    drop.style.display = 'block';
+
+    // Ajustar posición horizontal para no salirse
+    const dropW = 260;
+    let left = rect.left;
+    if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8;
+
+    drop.style.top  = (rect.bottom + window.scrollY + 2) + 'px';
+    drop.style.left = left + 'px';
+
+    // Limpiar búsqueda
+    document.getElementById('fdSearchInp').value = '';
+
+    // Listener para cerrar al clic fuera
+    setTimeout(() => {
+      document.addEventListener('click', _fdOutsideClick, true);
+    }, 50);
   }
 
-  function filtrarChecks() {
-    const val = document.getElementById('busFiltro').value.toLowerCase();
-    document.querySelectorAll('.form-check').forEach(el => el.style.display = el.innerText.toLowerCase().includes(val) ? 'block' : 'none');
+  function _fdRenderLista(vals, busq) {
+    const lista = document.getElementById('fdList');
+    const selActual = _fdCheckTemp;
+    const todosActivos = selActual.size === _fdTodosVals.length;
+
+    let html = `<div class="fd-item" id="fd-todos-item" onclick="fdToggleTodos()">
+      <input type="checkbox" id="fd-chk-todos" ${todosActivos ? 'checked' : ''} onclick="event.stopPropagation()">
+      <span style="font-weight:800;">(Seleccionar todo)</span>
+    </div>`;
+
+    const ql = busq.toLowerCase();
+    vals.forEach(v => {
+      if (ql && !v.toLowerCase().includes(ql)) return;
+      const chk = selActual.has(v) ? 'checked' : '';
+      const vEsc = v.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      html += `<div class="fd-item" onclick="fdToggleItem('${vEsc}')">
+        <input type="checkbox" ${chk} onclick="event.stopPropagation()" data-val="${vEsc}">
+        <span>${v === '' ? '(vacío)' : v}</span>
+      </div>`;
+    });
+
+    lista.innerHTML = html;
   }
 
-  function toggleTodos(e, val) {
+  function fdFiltrarLista(q) {
+    _fdRenderLista(_fdTodosVals, q);
+  }
+
+  // Enter en el buscador → seleccionar SOLO los elementos visibles y aplicar
+  function fdSearchKeydown(e) {
+    if (e.key !== 'Enter') return;
     e.preventDefault();
-    document.querySelectorAll('.check-item').forEach(cb => { if(cb.parentElement.style.display !== 'none') cb.checked = val; });
+    const q = document.getElementById('fdSearchInp').value.trim();
+    if (!q) return; // sin texto → no hacer nada con Enter
+
+    // Los visibles son los que pasan el filtro de búsqueda
+    const ql = q.toLowerCase();
+    const visibles = _fdTodosVals.filter(v => v.toLowerCase().includes(ql));
+    if (visibles.length === 0) return; // no hay coincidencias → ignorar
+
+    // Seleccionar solo los visibles
+    _fdCheckTemp = new Set(visibles);
+
+    // Aplicar inmediatamente
+    fdAplicar();
   }
 
-  function aplicarFiltros() {
-    filtros[tipoActual] = Array.from(document.querySelectorAll('.check-item:checked')).map(cb => cb.value);
+  function fdToggleTodos() {
+    const chkT = document.getElementById('fd-chk-todos');
+    const nuevo = !chkT.checked;
+    chkT.checked = nuevo;
+    _fdCheckTemp = nuevo ? new Set(_fdTodosVals) : new Set();
+    document.querySelectorAll('#fdList .fd-item:not(:first-child) input[type=checkbox]').forEach(cb => {
+      cb.checked = nuevo;
+    });
+  }
+
+  function fdToggleItem(val) {
+    const items = document.querySelectorAll('#fdList .fd-item:not(:first-child)');
+    items.forEach(item => {
+      const sp = item.querySelector('span');
+      const cb = item.querySelector('input');
+      const itemVal = sp.textContent === '(vacío)' ? '' : sp.textContent;
+      if (itemVal === val) {
+        cb.checked = !cb.checked;
+        if (cb.checked) _fdCheckTemp.add(val);
+        else _fdCheckTemp.delete(val);
+      }
+    });
+    const chkT = document.getElementById('fd-chk-todos');
+    if (chkT) chkT.checked = _fdCheckTemp.size === _fdTodosVals.length;
+  }
+
+  function fdOrdenar(dir) {
+    const campo = tipoActual;
+    // Quitar si ya existe en el stack para reinsertarlo al frente
+    _ordenStack = _ordenStack.filter(o => o.campo !== campo);
+    // Insertar al inicio (mayor prioridad = más reciente)
+    _ordenStack.unshift({ campo, dir });
+    // Aplicar inmediatamente (cierra dropdown y re-renderiza)
+    fdAplicar();
+  }
+
+  // Borrar filtro SOLO de la columna activa, mantener las demás
+  function fdBorrarFiltroColumna() {
+    const campo = tipoActual;
+    // Restaurar el filtro de esta columna a "todos los valores"
+    if (campo === 'estado') {
+      filtros[campo] = ["OK", "BAJO", "SIN EXISTENCIA", "SIN MÍNIMO"];
+    } else if (campo === 'minimo') {
+      const desdeDatos = dataGlobal.map(i => getMinimoTexto(i.diametro, i.aceroLimpio));
+      const desdeCatalogo = Object.keys(MINIMOS).map(k => { const [d,a] = k.split('|'); return getMinimoTexto(d, a); });
+      filtros[campo] = [...new Set([...desdeDatos, ...desdeCatalogo])];
+    } else {
+      filtros[campo] = [...new Set(dataGlobal.map(i => i[campo] ? i[campo].toString() : ''))];
+    }
+    fdCerrar();
     renderizar();
-    modalFiltro.hide();
     actualizarIconosFiltro();
     actualizarBotonFiltros();
   }
 
+  function fdAplicar() {
+    if (_fdCheckTemp.size === _fdTodosVals.length) {
+      filtros[tipoActual] = [..._fdTodosVals];
+    } else {
+      filtros[tipoActual] = [..._fdCheckTemp];
+    }
+    fdCerrar();
+    renderizar();
+    actualizarIconosFiltro();
+    actualizarBotonFiltros();
+  }
+
+  function fdCerrar() {
+    const drop = document.getElementById('excelFilterDrop');
+    drop.style.display = 'none';
+    _fdDropActivo = null;
+    document.removeEventListener('click', _fdOutsideClick, true);
+  }
+
+  function _fdOutsideClick(e) {
+    const drop = document.getElementById('excelFilterDrop');
+    if (drop && !drop.contains(e.target)) {
+      fdCerrar();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  ICONOS Y BOTÓN FILTROS
+  // ═══════════════════════════════════════════════════════════════
   const ICON_MAP = {
     'diametro':    ['fi-diametro', 'fi-diametro2'],
     'aceroLimpio': ['fi-aceroLimpio'],
@@ -420,13 +696,42 @@
   }
 
   function actualizarIconosFiltro() {
-    Object.keys(ICON_MAP).forEach(campo => {
-      const activo = esFiltroActivo(campo);
-      ICON_MAP[campo].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (activo) el.classList.add('filter-icon-active');
-        else el.classList.remove('filter-icon-active');
+    // ── Filtros activos ──
+    document.querySelectorAll('.clickable-header').forEach(th => {
+      const ico = th.querySelector('.filter-icon');
+      if (!ico) return;
+      const id = ico.id;
+      const campo = Object.keys(ICON_MAP).find(c => ICON_MAP[c].includes(id));
+      if (!campo) return;
+      if (esFiltroActivo(campo)) {
+        ico.style.color = '#c62828';
+        th.classList.add('th-filtrado');
+      } else {
+        ico.style.color = '';
+        th.classList.remove('th-filtrado');
+      }
+    });
+
+    // ── Indicadores de orden (flechita + número de prioridad) ──
+    // Limpiar indicadores previos
+    document.querySelectorAll('.sort-indicator').forEach(el => el.remove());
+
+    _ordenStack.forEach(({ campo, dir }, idx) => {
+      // Buscar el/los th que corresponden a este campo
+      const iconIds = ICON_MAP[campo] || [];
+      iconIds.forEach(iconId => {
+        const ico = document.getElementById(iconId);
+        if (!ico) return;
+        const thInner = ico.closest('.th-inner');
+        if (!thInner) return;
+        const arrow  = dir === 'asc' ? '▲' : '▼';
+        const color  = dir === 'asc' ? '#1b5e20' : '#b71c1c';
+        const prioTxt = _ordenStack.length > 1 ? `<sup style="font-size:8px;">${idx + 1}</sup>` : '';
+        const span = document.createElement('span');
+        span.className = 'sort-indicator';
+        span.style.cssText = `color:${color};font-size:11px;font-weight:900;margin-left:2px;`;
+        span.innerHTML = arrow + prioTxt;
+        thInner.appendChild(span);
       });
     });
   }
@@ -446,6 +751,9 @@
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  //  RENDER
+  // ═══════════════════════════════════════════════════════════════
   function renderizar() {
     const dataFiltrada = dataGlobal.filter(i => {
       return Object.keys(filtros).every(k => {
@@ -453,8 +761,32 @@
         return filtros[k].includes(i[k].toString());
       });
     });
-    if (vistaActual === 'resumen') renderVistaResumen(dataFiltrada);
-    else renderVistaDetallada(dataFiltrada);
+
+    let datos = [...dataFiltrada];
+
+    // Ordenamiento multi-columna estilo Excel:
+    // _ordenStack[0] = dominante (más reciente), los siguientes son desempate.
+    // Se aplica de atrás hacia adelante (el último tiene menor prioridad) con
+    // un sort estable encadenado, o bien un comparador compuesto:
+    if (_ordenStack.length > 0) {
+      datos.sort((a, b) => {
+        for (const { campo, dir } of _ordenStack) {
+          if (campo === 'minimo' || campo === 'estado') continue;
+          const va = a[campo] !== undefined ? a[campo].toString() : '';
+          const vb = b[campo] !== undefined ? b[campo].toString() : '';
+          const cmp = va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+          if (cmp !== 0) return dir === 'asc' ? cmp : -cmp;
+        }
+        return 0;
+      });
+    }
+
+    if (vistaActual === 'resumen') renderVistaResumen(datos);
+    else renderVistaDetallada(datos);
+
+    // Refrescar indicadores de filtro y orden en los encabezados
+    actualizarIconosFiltro();
+    actualizarBotonFiltros();
   }
 
   function renderVistaResumen(data) {
@@ -468,25 +800,22 @@
       agrupado[key].kilos += i.kilos;
       agrupado[key].detalles.push(i);
     });
-    // Agregar entradas del catálogo con cero existencia, respetando filtros activos de diámetro y acero
+
     const diamFiltro = filtros['diametro'] || null;
     const aceroFiltro = filtros['aceroLimpio'] || null;
-    const clavesAgrupado = new Set(
-      Object.values(agrupado).map(g => parseFloat(g.diametro).toFixed(2) + '|' + g.acero)
-    );
+    const clavesAgrupado = new Set(Object.values(agrupado).map(g => parseFloat(g.diametro).toFixed(2) + '|' + g.acero));
     Object.keys(MINIMOS).forEach(key => {
       if (!clavesAgrupado.has(key)) {
         const [diam, acero] = key.split('|');
-        // Respetar filtro de diámetro: comparar formateado
         if (diamFiltro) {
           const coincideDiam = diamFiltro.some(f => parseFloat(f).toFixed(2) === diam);
           if (!coincideDiam) return;
         }
-        // Respetar filtro de acero limpio
         if (aceroFiltro && !aceroFiltro.includes(acero)) return;
         agrupado[key] = { diametro: diam, acero: acero, rollos: 0, kilos: 0, detalles: [] };
       }
     });
+
     let grupos = Object.values(agrupado);
     const minimosFiltro = filtros['minimo'];
     const estadosFiltro = filtros['estado'];
@@ -495,39 +824,52 @@
       const estado = getEstado(g.diametro, g.acero, g.kilos);
       return minimosFiltro.includes(minTexto) && estadosFiltro.includes(estado);
     });
+
     let tRollos = 0, tKilos = 0;
     grupos.sort((a,b) => (parseInt(a.acero)-parseInt(b.acero)) || (a.diametro-b.diametro)).forEach((group, idx) => {
       tRollos += group.rollos;
-      tKilos += group.kilos;
-      const estadoHTML = getEstadoHTML(group.diametro, group.acero, group.kilos);
-      const minimoTexto = getMinimoTexto(group.diametro, group.acero);
-      const zebraClass = idx % 2 === 0 ? 'fila-par' : 'fila-impar';
-      body.insertAdjacentHTML('beforeend',
-        '<tr class="' + zebraClass + '">' +
-          '<td>' + fmtDiam(group.diametro) + '</td>' +
-          '<td class="fw-bold">' + group.acero + '</td>' +
-          '<td>' + group.rollos + '</td>' +
-          '<td class="kilos-total">' + group.kilos.toLocaleString() + ' kg</td>' +
-          '<td>' + minimoTexto + '</td>' +
-          '<td>' + estadoHTML + '</td>' +
-          '<td>' +
-            '<button type="button" id="btn-det-' + idx + '" class="btn btn-sm btn-link p-0 btn-toggle-detalle" onclick="toggleSubRow(' + idx + ')">' +
-              '<i class="fas fa-plus-circle"></i>' +
-            '</button>' +
-          '</td>' +
-        '</tr>' +
-        '<tr id="sub-' + idx + '" class="d-none bg-light">' +
-          '<td colspan="7" class="p-2">' + renderSubTabla(group.detalles) + '</td>' +
-        '</tr>'
-      );
+      tKilos  += group.kilos;
+      const estadoHTML   = getEstadoHTML(group.diametro, group.acero, group.kilos);
+      const minimoTexto  = getMinimoTexto(group.diametro, group.acero);
+      const zebraClass   = idx % 2 === 0 ? 'fila-par' : 'fila-impar';
+
+      // ── Fila PADRE (clic en cualquier parte abre/cierra detalle) ──
+      const tr = document.createElement('tr');
+      tr.className = zebraClass + ' fila-resumen-seleccionable';
+      tr.id = 'fila-res-' + idx;
+      tr.innerHTML =
+        `<td>${fmtDiam(group.diametro)}</td>
+         <td class="fw-bold">${group.acero}</td>
+         <td>${group.rollos}</td>
+         <td class="kilos-total">${group.kilos.toLocaleString()} kg</td>
+         <td>${minimoTexto}</td>
+         <td>${estadoHTML}</td>
+         <td>
+           <button type="button" id="btn-det-${idx}" class="btn btn-sm btn-link p-0 btn-toggle-detalle" onclick="event.stopPropagation(); toggleSubRow(${idx})">
+             <i class="fas fa-plus-circle"></i>
+           </button>
+         </td>`;
+
+      // Clic en cualquier parte del renglón → toggle detalle
+      tr.addEventListener('click', () => toggleSubRow(idx));
+
+      body.appendChild(tr);
+
+      // Fila hija con detalle
+      const trSub = document.createElement('tr');
+      trSub.id = 'sub-' + idx;
+      trSub.className = 'd-none bg-light';
+      trSub.innerHTML = `<td colspan="7" class="p-2">${renderSubTabla(group.detalles)}</td>`;
+      body.appendChild(trSub);
     });
+
     document.getElementById('footResumen').innerHTML =
-      '<tr class="row-totales">' +
-        '<td colspan="2">TOTALES</td>' +
-        '<td>' + tRollos + '</td>' +
-        '<td>' + tKilos.toLocaleString() + ' kg</td>' +
-        '<td colspan="3"></td>' +
-      '</tr>';
+      `<tr class="row-totales">
+         <td colspan="2">TOTALES</td>
+         <td>${tRollos}</td>
+         <td>${tKilos.toLocaleString()} kg</td>
+         <td colspan="3"></td>
+       </tr>`;
   }
 
   function renderVistaDetallada(data) {
@@ -538,26 +880,26 @@
       tKilos += i.kilos;
       const zebraClass = idx % 2 === 0 ? 'fila-par' : 'fila-impar';
       body.insertAdjacentHTML('beforeend',
-        '<tr class="' + zebraClass + '">' +
-          '<td>' + i.proveedor + '</td>' +
-          '<td>' + i.fecha + '</td>' +
-          '<td>' + fmtDiam(i.diametro) + '</td>' +
-          '<td>' + i.aceroFull + '</td>' +
-          '<td>' + i.n_rollo + '</td>' +
-          '<td class="kilos-total">' + i.kilos.toLocaleString() + '</td>' +
-          '<td>' + i.colada + '</td>' +
-          '<td>' + i.sello + '</td>' +
-          '<td>' + i.n_remision + '</td>' +
-          '<td>' + i.consecutivo + '</td>' +
-          '<td>' + renderInspInline(i) + '</td>' +
-        '</tr>'
+        `<tr class="${zebraClass}">
+           <td>${i.proveedor}</td>
+           <td>${i.fecha}</td>
+           <td>${fmtDiam(i.diametro)}</td>
+           <td>${i.aceroFull}</td>
+           <td>${i.n_rollo}</td>
+           <td class="kilos-total">${i.kilos.toLocaleString()}</td>
+           <td>${i.colada}</td>
+           <td>${i.sello}</td>
+           <td>${i.n_remision}</td>
+           <td>${i.consecutivo}</td>
+           <td>${renderInspInline(i)}</td>
+         </tr>`
       );
     });
     document.getElementById('footDetallada').innerHTML =
-      '<tr class="row-totales">' +
-        '<td colspan="5">TOTAL REGISTROS: ' + data.length + '</td>' +
-        '<td colspan="6">TOTAL KILOS: ' + tKilos.toLocaleString() + ' kg</td>' +
-      '</tr>';
+      `<tr class="row-totales">
+         <td colspan="5">TOTAL REGISTROS: ${data.length}</td>
+         <td colspan="6">TOTAL KILOS: ${tKilos.toLocaleString()} kg</td>
+       </tr>`;
   }
 
   function renderSubTabla(detalles) {
@@ -568,39 +910,43 @@
       '<tbody>' +
         detalles.map((d, idx) => {
           const zc = idx % 2 === 0 ? 'fila-par' : 'fila-impar';
-          return '<tr class="' + zc + '">' +
-            '<td>' + d.fecha + '</td>' +
-            '<td>' + fmtDiam(d.diametro) + '</td>' +
-            '<td>' + d.aceroFull + '</td>' +
-            '<td>' + d.proveedor + '</td>' +
-            '<td>' + d.kilos.toLocaleString() + '</td>' +
-            '<td>' + d.colada + '</td>' +
-            '<td>' + d.sello + '</td>' +
-            '<td>' + renderInspInline(d) + '</td>' +
-          '</tr>';
+          return `<tr class="${zc}">
+            <td>${d.fecha}</td>
+            <td>${fmtDiam(d.diametro)}</td>
+            <td>${d.aceroFull}</td>
+            <td>${d.proveedor}</td>
+            <td>${d.kilos.toLocaleString()}</td>
+            <td>${d.colada}</td>
+            <td>${d.sello}</td>
+            <td>${renderInspInline(d)}</td>
+          </tr>`;
         }).join('') +
-      '</tbody>' +
-    '</table>';
+      '</tbody></table>';
   }
 
   function renderInspInline(d) {
     if (!d.tieneInsp) return '<div class="no-data-watermark text-center small">SIN DATOS</div>';
-    return '<table class="table-insp">' +
-      '<tr><th rowspan="2">INSPECCION<br>' + d.f_insp + '</th><th colspan="2">COLA</th><th colspan="2">PUNTA</th><th>RESISTENCIA</th></tr>' +
-      '<tr>' +
-        '<td>P: <span class="val-red">' + (d.c_parc || '-') + '</span></td>' +
-        '<td>T: <span class="val-red">' + (d.c_total || '-') + '</span></td>' +
-        '<td>P: <span class="val-red">' + (d.p_parc || '-') + '</span></td>' +
-        '<td>T: <span class="val-red">' + (d.p_total || '-') + '</span></td>' +
-        '<td>' + (d.res_c || '-') + ' / ' + (d.res_p || '-') + '</td>' +
-      '</tr>' +
-    '</table>';
+    return `<table class="table-insp">
+      <tr>
+        <th rowspan="2">INSPECCION<br>${d.f_insp}</th>
+        <th colspan="2">COLA</th>
+        <th colspan="2">PUNTA</th>
+        <th>RESISTENCIA</th>
+      </tr>
+      <tr>
+        <td>P: <span class="val-red">${d.c_parc || '-'}</span></td>
+        <td>T: <span class="val-red">${d.c_total || '-'}</span></td>
+        <td>P: <span class="val-red">${d.p_parc || '-'}</span></td>
+        <td>T: <span class="val-red">${d.p_total || '-'}</span></td>
+        <td>${d.res_c || '-'} / ${d.res_p || '-'}</td>
+      </tr>
+    </table>`;
   }
 
   function toggleSubRow(idx) {
     const subRow = document.getElementById('sub-' + idx);
-    const btn = document.getElementById('btn-det-' + idx);
-    const icon = btn.querySelector('i');
+    const btn    = document.getElementById('btn-det-' + idx);
+    const icon   = btn.querySelector('i');
     const expandido = !subRow.classList.contains('d-none');
     subRow.classList.toggle('d-none');
     if (expandido) {
@@ -610,7 +956,6 @@
       icon.className = 'fas fa-minus-circle';
       btn.classList.add('expanded');
     }
-    // Mostrar u ocultar botón colapsar-todos según si hay alguno abierto
     const hayAbiertos = document.querySelectorAll('[id^="sub-"]:not(.d-none)').length > 0;
     const btnCol = document.getElementById('btnColapsarTodos');
     if (hayAbiertos) btnCol.classList.remove('d-none');
@@ -639,7 +984,7 @@
       const agg = {};
       dataFiltrada.forEach(i => {
         const k = i.diametro + "|" + i.aceroLimpio;
-        if(!agg[k]) agg[k] = {d:i.diametro, a:i.aceroLimpio, r:0, k:0};
+        if (!agg[k]) agg[k] = {d:i.diametro, a:i.aceroLimpio, r:0, k:0};
         agg[k].r++; agg[k].k += i.kilos;
       });
       Object.values(agg).forEach(g => {
