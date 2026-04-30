@@ -214,8 +214,25 @@
       max-width: 820px; max-height: 95vh; overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,.5);
     }
-    /* Modal destino: encima del modal de inspección */
-    #modalDestino { z-index: 10000; }
+    /* Modal inspección alambre — igual que modal-box pero más ancho */
+    .modal-insp-box {
+      background: white; border-radius: 10px; width: 100%;
+      max-width: 1020px; max-height: 95vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .modal-insp-title {
+      font-size: 1rem; font-weight: 900; text-align: center;
+      border: 2px solid #000; padding: 10px;
+      background: #fff; color: #000; text-transform: uppercase;
+      border-radius: 10px 10px 0 0;
+    }
+    /* Quitar flechitas de inputs type=number en todos los navegadores */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+    input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+    #modalDestino       { z-index: 10000; }
+    #modalInspAlambre   { z-index: 9500; }
+    #modalDestinoAlambre{ z-index: 11000; }
 
     /* ── Estilos del formulario de inspección (réplica del formato FO-CA-019) ── */
     .insp-header {
@@ -225,24 +242,29 @@
     }
     .insp-banner {
       display: flex; align-items: stretch; border: 2px solid #000;
-      border-top: none; min-height: 64px;
+      border-top: none; min-height: 64px; overflow: hidden;
     }
-    /* El texto de destino ocupa todo el ancho menos el cuadro de color */
     .insp-banner-grade {
-      flex: 1; display: flex; align-items: center;
-      justify-content: flex-start; /* empieza desde la izquierda */
-      font-size: 2rem; font-weight: 900; letter-spacing: .02em;
-      cursor: pointer; user-select: none; position: relative;
-      padding-left: 12px; white-space: nowrap;
+      flex: 1; display: grid;
+      grid-template-columns: 150px 1fr auto;
+      align-items: center; gap: 10px;
+      cursor: pointer; user-select: none;
+      padding: 6px 12px;
     }
-    /* Cuadro de color: ~25% del banner, pegado a la derecha */
-    .insp-grade-square {
-      position: absolute; right: 0; top: 0; bottom: 0;
-      width: 25%;
-    }
-    /* El swatch lateral ya no se usa — lo ocultamos */
+    .insp-grade-square { display: none; } /* reemplazado por inspGradeSquares */
     .insp-banner-color { display: none; }
-    /* Columna izquierda más ancha, texto más grande */
+
+    /* Cuadros de color: rectángulos grandes altura completa */
+    #inspGradeSquares {
+      display: flex; gap: 0; height: 100%;
+      align-self: stretch; margin-right: -12px;
+    }
+    #inspGradeSquares span {
+      width: 60px !important; height: 100% !important;
+      border-radius: 0 !important; border: none !important;
+      border-left: 2px solid rgba(0,0,0,.25) !important;
+    }
+
     .insp-body {
       border: 2px solid #000; border-top: none;
       display: grid; grid-template-columns: 1fr 1.6fr;
@@ -265,70 +287,68 @@
       padding: 3px 8px; font-size: .88rem; width: 100%;
       outline: none; font-family: 'Roboto', sans-serif;
     }
-    /* Fotos — zona derecha completa */
-    .fotos-zona {
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
+
+    /* ── Sección C y P ── */
+    .insp-cp-section { border: 2px solid #000; border-top: none; }
+    .insp-cp-row {
+      display: grid; align-items: center;
+      border-bottom: 1px solid #000; font-size: .72rem;
     }
+    .insp-cp-row:last-child { border-bottom: none; }
+    .insp-cp-label {
+      font-size: 1.4rem; font-weight: 900; padding: 8px 4px;
+      border-right: 2px solid #000; text-align: center;
+      color: #f59e0b;
+    }
+    .insp-cp-th {
+      font-size: .65rem; font-weight: 700; text-align: center;
+      color: #555; line-height: 1.2; margin-bottom: 2px;
+    }
+    .insp-cp-val-wrap { display: flex; justify-content: center; }
+
+    /* Fotos — zona derecha completa */
+    .fotos-zona { width: 100%; height: 100%; display: flex; flex-direction: column; }
     .fotos-drop-area {
-      border: 2px dashed #94a3b8; border-radius: 8px;
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 6px;
-      cursor: pointer; background: #f8fafc; transition: border-color .2s;
+      border: 2px dashed #94a3b8; border-radius: 8px; flex: 1;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 6px; cursor: pointer;
+      background: #f8fafc; transition: border-color .2s;
       padding: 10px; text-align: center; min-height: 180px;
     }
     .fotos-drop-area.drag-over { border-color: var(--primary); background: #eff6ff; }
-    /* Grid de fotos: ocupa todo el espacio disponible */
-    .fotos-grid {
-      display: grid;
-      gap: 6px; margin-top: 6px; width: 100%;
-    }
+    .fotos-grid { display: grid; gap: 6px; margin-top: 6px; width: 100%; }
     .fotos-grid[data-count="1"] { grid-template-columns: 1fr; }
     .fotos-grid[data-count="2"] { grid-template-columns: 1fr 1fr; }
     .fotos-grid[data-count="3"] { grid-template-columns: 1fr 1fr 1fr; }
     .fotos-grid[data-count="4"] { grid-template-columns: 1fr 1fr; }
     .foto-thumb {
-      position: relative; border-radius: 6px;
-      overflow: hidden; border: 2px solid #ddd;
-      aspect-ratio: 1 / 1;
+      position: relative; border-radius: 6px; overflow: hidden;
+      border: 2px solid #ddd; aspect-ratio: 1 / 1;
     }
     .foto-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .foto-thumb .btn-rm {
       position: absolute; top: 4px; right: 4px;
-      background: rgba(220,38,38,.85); color: white;
-      border: none; border-radius: 50%; width: 22px; height: 22px;
-      font-size: 11px; cursor: pointer; display: flex;
-      align-items: center; justify-content: center;
+      background: rgba(220,38,38,.85); color: white; border: none;
+      border-radius: 50%; width: 22px; height: 22px; font-size: 11px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
     .fotos-estado { font-size: .72rem; color: var(--primary); font-weight: 700; margin-top: 4px; }
 
-    /* ── Sección C y P (igual que antes) ── */
-    .insp-cp-section { border: 2px solid #000; border-top: none; }
-    .insp-cp-row {
-      display: grid; align-items: center; border-bottom: 1px solid #ccc;
-      font-size: .72rem;
-    }
-    .insp-cp-row:last-child { border-bottom: none; }
-    .insp-cp-label {
-      font-size: 1.2rem; font-weight: 900; padding: 8px;
-      border-right: 1px solid #000; text-align: center;
-    }
-    .insp-cp-grid {
-      display: grid; padding: 4px 6px; gap: 4px 6px;
-    }
-    .insp-cp-th { font-size: .65rem; font-weight: 700; text-align: center; color: #555; }
-    .insp-cp-val-wrap { display: flex; justify-content: center; }
-
     /* ── Modal destino ── */
     .modal-destino-box {
-      background: white; border-radius: 10px; padding: 24px;
-      max-width: 420px; width: 100%;
+      background: white; border-radius: 10px; padding: 20px;
+      max-width: 820px; width: 96%; max-height: 88vh;
+      display: flex; flex-direction: column;
+    }
+    #destinoBtns {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      overflow-y: auto; max-height: 70vh; padding-right: 4px;
     }
     .destino-btn {
-      display: block; width: 100%; padding: 10px;
-      margin-bottom: 8px; border: none; border-radius: 8px;
-      font-size: .9rem; font-weight: 900; cursor: pointer;
-      text-align: left; padding-left: 14px;
+      width: 100%; padding: 10px 12px;
+      border: none; border-radius: 8px;
+      font-size: .88rem; font-weight: 900; cursor: pointer;
+      text-align: left;
     }
 
     /* ── Footer modal ── */
@@ -402,6 +422,7 @@
         <div class="header-tabs" style="margin-top:4px;">
           <button class="nav-tab active" id="tab-exist" onclick="cambiarTab('existencia')">EXISTENCIA DETALLADA</button>
           <button class="nav-tab" id="tab-entradas" onclick="cambiarTab('entradas')">ENTRADAS 6 MESES</button>
+          <button class="nav-tab" id="tab-alambres" onclick="cambiarTab('alambres')">ALAMBRES</button>
         </div>
       </div>
     </div>
@@ -435,6 +456,21 @@
       <thead id="theadEntradas"></thead>
       <tbody id="tbodyEntradas"></tbody>
       <tfoot id="tfootEntradas"></tfoot>
+    </table>
+
+    <!-- ALAMBRES -->
+    <div id="barraAlambres" style="display:none;padding:6px 4px 4px;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span id="lblMesesAlambres" style="font-size:.78rem;font-weight:700;color:#555;"></span>
+      <button id="btnCargarMasAlambres" onclick="cargarMasAlambres()"
+        style="font-size:.76rem;font-weight:800;padding:4px 14px;border-radius:6px;
+               border:1.5px solid var(--primary);color:var(--primary);background:white;cursor:pointer;">
+        ＋ Cargar 3 meses más
+      </button>
+    </div>
+    <table id="tablaAlambres" class="main-tbl" style="display:none;">
+      <thead id="theadAlambres"></thead>
+      <tbody id="tbodyAlambres"></tbody>
+      <tfoot id="tfootAlambres"></tfoot>
     </table>
 
   </div>
@@ -474,23 +510,107 @@
   </div>
 </div>
 
+<!-- ══ MODAL INSPECCIÓN ALAMBRE ══ -->
+<div class="modal-overlay" id="modalInspAlambre">
+  <div class="modal-insp-box" style="max-width:1000px;width:97%;">
+    <div class="modal-insp-title">REGISTRO DE INSPECCIÓN - RECOCIDO (ALAMBRES)</div>
+
+    <!-- Banner destino -->
+    <div id="iaBanner" style="border:2px solid #000;border-top:none;display:flex;min-height:62px;overflow:hidden;">
+      <div onclick="abrirModalDestinoAlambre()"
+        style="flex:1;display:flex;align-items:center;cursor:pointer;user-select:none;min-width:0;">
+        <div id="iaBannerSub" style="display:none;flex-shrink:0;width:150px;padding:4px 8px;flex-direction:column;justify-content:center;overflow:hidden;">
+          <div id="iaBannerEtiqueta" style="font-size:.62rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <div id="iaBannerPintura"  style="font-size:.62rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+        <div id="iaBannerSubVacio" style="flex-shrink:0;width:150px;"></div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;min-width:0;padding:0 8px;">
+          <span id="iaGradeTxt" style="font-size:1rem;font-weight:900;text-align:center;color:#64748b;">Clic para ingresar destino</span>
+        </div>
+      </div>
+      <div id="iaGradeSquares" style="display:flex;align-self:stretch;flex-shrink:0;"></div>
+    </div>
+
+    <!-- Cuerpo: datos izquierda + fotos derecha -->
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;border:2px solid #000;border-top:none;">
+      <div style="padding:8px 12px;border-right:1px solid #000;">
+        <div class="insp-row"><span class="insp-label">ORDEN:</span>      <span class="insp-val" id="iaOrdenCompleto"></span></div>
+        <div class="insp-row"><span class="insp-label">CÓDIGO:</span>     <span class="insp-val" id="iaCodigo"></span></div>
+        <div class="insp-row"><span class="insp-label">TIPO:</span>       <span class="insp-val" id="iaTipo"></span></div>
+        <div class="insp-row"><span class="insp-label">Ø MP (MM):</span> <span class="insp-val" id="iaDiamPresentacion"></span></div>
+        <div class="insp-row"><span class="insp-label">TOLERANCIA:</span><span class="insp-val" id="iaToleranciaTxt"></span></div>
+        <div class="insp-row"><span class="insp-label">ACERO:</span>     <span class="insp-val" id="iaAcero"></span></div>
+      </div>
+      <div style="padding:8px;display:flex;flex-direction:column;">
+        <div class="fotos-drop-area" id="iaFotosDropArea"
+          ondragover="event.preventDefault()" ondrop="iaDropFotos(event)"
+          onclick="document.getElementById('inputFotosAlambre').click()">
+          <i class="fas fa-cloud-upload-alt" style="font-size:1.6rem;color:#94a3b8;"></i>
+          <span style="font-size:.78rem;color:#94a3b8;">Arrastra fotos aquí o toca para seleccionar</span>
+          <span style="font-size:.68rem;color:#bbb;">máx. 16 fotos</span>
+        </div>
+        <input type="file" id="inputFotosAlambre" accept="image/*" multiple style="display:none;" onchange="iaFotosSeleccionadas(event)">
+        <div class="fotos-grid" id="iaFotosGrid"></div>
+        <div class="fotos-estado" id="iaFotosEstado"></div>
+      </div>
+    </div>
+
+    <!-- Sección rollos con scroll -->
+    <div id="iaRollosContainer" style="padding:8px;border:2px solid #000;border-top:none;max-height:360px;overflow-y:auto;"></div>
+
+    <div style="padding:6px 14px;font-size:.7rem;color:#555;border:2px solid #000;border-top:none;">
+      Fecha de consulta: <span id="iaFechaConsulta"></span>
+      <span style="float:right;">FO-CA-019  Rev. 2.0</span>
+    </div>
+    <div class="modal-footer-btns">
+      <button class="btn-cerrar-insp" onclick="cerrarModalInspAlambre()">Cerrar</button>
+      <button class="btn-guardar-insp" onclick="guardarInspeccionAlambre()">
+        <i class="fas fa-save" style="margin-right:5px;"></i>Guardar y Enviar
+        <i class="fab fa-telegram-plane" style="margin-left:6px;font-size:.9rem;opacity:.85;"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal destino alambre -->
+<div class="modal-overlay" id="modalDestinoAlambre">
+  <div class="modal-destino-box">
+    <h3 style="font-weight:900;margin-bottom:12px;color:var(--primary);">Seleccionar Destino</h3>
+    <div id="destinoBtnsAlambre" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow-y:auto;max-height:70vh;padding-right:4px;"></div>
+    <button onclick="document.getElementById('modalDestinoAlambre').classList.remove('open')"
+      style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;background:white;font-weight:700;cursor:pointer;margin-top:8px;">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODAL REGISTRO INSPECCIÓN ══ -->
 <div class="modal-overlay" id="modalInsp">
   <div class="modal-box">
     <!-- Título -->
     <div class="insp-header" id="inspTitulo">REGISTRO DE INSPECCIÓN - RECOCIDO</div>
 
-    <!-- Banner grado: ocupa todo el ancho, texto desde la izquierda, cuadro de color a la derecha -->
-    <div class="insp-banner" id="inspBanner">
-      <div class="insp-banner-grade" id="inspBannerGrade" onclick="abrirModalDestino()">
-        <span id="inspGradeTxt" style="z-index:1;padding-right:28%;">Clic para ingresar destino</span>
-        <div class="insp-grade-square" id="inspGradeSquare"></div>
+    <!-- Banner grado -->
+    <div class="insp-banner" id="inspBanner" style="border:2px solid #000;border-top:none;display:flex;min-height:62px;overflow:hidden;">
+      <!-- Zona clickeable: izquierda + centro -->
+      <div id="inspBannerGrade" onclick="abrirModalDestino()"
+        style="flex:1;display:flex;align-items:center;cursor:pointer;user-select:none;min-width:0;">
+        <!-- Izquierda: etiqueta y pintura en renglón cada una -->
+        <div id="inspBannerSub" style="display:none;flex-shrink:0;width:150px;padding:4px 8px;
+          display:flex;flex-direction:column;justify-content:center;overflow:hidden;">
+          <div id="inspBannerEtiqueta" style="font-size:.62rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <div id="inspBannerPintura"  style="font-size:.62rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+        <div id="inspBannerSubVacio" style="flex-shrink:0;width:150px;"></div>
+        <!-- Centro: nombre grande -->
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;min-width:0;padding:0 8px;">
+          <span id="inspGradeTxt" style="font-size:2rem;font-weight:900;text-align:center;white-space:nowrap;">Clic para ingresar destino</span>
+        </div>
       </div>
+      <!-- Cuadros de color FUERA del clickeable — altura completa -->
+      <div id="inspGradeSquares" style="display:flex;align-self:stretch;flex-shrink:0;"></div>
     </div>
 
     <!-- Cuerpo: datos fijos izquierda + fotos derecha -->
     <div class="insp-body">
-      <!-- Columna izquierda: datos del rollo (no editables) -->
       <div class="insp-col">
         <div class="insp-row"><span class="insp-label">Fecha de insp:</span>
           <input type="date" id="inpFechaInsp" class="insp-val-input" style="max-width:145px;">
@@ -502,7 +622,6 @@
         <div class="insp-row"><span class="insp-label">COLADA:</span>    <span class="insp-val" id="inspColada"></span></div>
         <div class="insp-row"><span class="insp-label">PESO (KG):</span> <span class="insp-val" id="inspPeso"></span></div>
       </div>
-      <!-- Columna derecha: SOLO FOTOS -->
       <div class="insp-col" style="display:flex;flex-direction:column;">
         <div class="fotos-zona">
           <div class="fotos-drop-area" id="fotosDropArea"
@@ -520,68 +639,110 @@
 
     <!-- Sección C y P -->
     <div class="insp-cp-section">
-      <!-- COLA -->
-      <div class="insp-cp-row" style="grid-template-columns:40px 1fr;">
-        <div class="insp-cp-label">C</div>
-        <div class="insp-cp-grid" style="grid-template-columns:repeat(5,1fr);">
-          <div>
+      <!-- Fila C -->
+      <div style="display:grid;grid-template-columns:38px 1fr;border-bottom:2px solid #000;">
+        <div class="insp-cp-label" style="font-size:1.4rem;font-weight:900;color:#f59e0b;
+          display:flex;align-items:center;justify-content:center;border-right:2px solid #000;">C</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 100px 1fr 1fr 90px 70px;gap:0;align-items:start;">
+          <!-- Decarburación parcial -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
             <div class="insp-cp-th">Decarburación<br>parcial (In)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpCDecParc" style="width:70px;text-align:center;"></div>
+            <input class="insp-val-input" id="inpCDecParc" type="number" step="0.001" min="0"
+              style="width:100%;text-align:center;box-sizing:border-box;"
+              onblur="formatDecarbur(this)">
           </div>
-          <div>
+          <!-- Decarburación libre -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
             <div class="insp-cp-th">Decarburación<br>libre (In)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpCDecLibre" style="width:70px;text-align:center;"></div>
+            <input class="insp-val-input" id="inpCDecLibre" type="number" step="0.001" min="0"
+              style="width:100%;text-align:center;box-sizing:border-box;"
+              onblur="formatDecarbur(this)">
           </div>
-          <div>
-            <div class="insp-cp-th">Reducción de<br>Área (%)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpRedAreaC" style="width:70px;text-align:center;"></div>
+          <!-- Ø Ini/Fin apilados -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Ø Ini / Fin<br>(mm)</div>
+            <input class="insp-val-input" id="inpCDiamI" type="number" step="any" placeholder="Inicial"
+              style="width:100%;text-align:center;background:#fffde7;margin-bottom:3px;box-sizing:border-box;" oninput="calcRedArea('C')">
+            <input class="insp-val-input" id="inpCDiamF" type="number" step="any" placeholder="Final"
+              style="width:100%;text-align:center;background:#fffde7;box-sizing:border-box;" oninput="calcRedArea('C')">
           </div>
-          <div>
-            <div class="insp-cp-th">Resistencia<br>Kg/mm² / KSI</div>
-            <div class="insp-cp-val-wrap" style="gap:3px;">
-              <input class="insp-val-input" id="inpResistC1" style="width:55px;text-align:center;">
-              <span style="font-weight:900;font-size:.8rem;align-self:center;">/</span>
-              <input class="insp-val-input" id="inpResistC2" style="width:55px;text-align:center;">
-            </div>
+          <!-- Red.Área -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Red.Área (%)<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpRedAreaC" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;">
           </div>
-          <div>
-            <div class="insp-cp-th">Dureza Prom.<br>(HRB)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpDurezaC" style="width:60px;text-align:center;"></div>
+          <!-- Libras -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Libras<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpCLibras" type="number" step="any"
+              style="width:100%;text-align:center;background:#fff3e0;box-sizing:border-box;" oninput="calcResist('C')">
+          </div>
+          <!-- Kg/mm² y KSI apilados -->
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Kg/mm²<br>KSI</div>
+            <input class="insp-val-input" id="inpResistC1" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;margin-bottom:3px;box-sizing:border-box;">
+            <input class="insp-val-input" id="inpResistC2" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;">
+          </div>
+          <!-- HRB -->
+          <div style="padding:4px 6px;">
+            <div class="insp-cp-th">HRB<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpDurezaC" type="number" step="any"
+              style="width:100%;text-align:center;box-sizing:border-box;">
           </div>
         </div>
       </div>
-      <!-- PUNTA -->
-      <div class="insp-cp-row" style="grid-template-columns:40px 1fr;">
-        <div class="insp-cp-label">P</div>
-        <div class="insp-cp-grid" style="grid-template-columns:repeat(5,1fr);">
-          <div>
+      <!-- Fila P -->
+      <div style="display:grid;grid-template-columns:38px 1fr;">
+        <div class="insp-cp-label" style="font-size:1.4rem;font-weight:900;color:#f59e0b;
+          display:flex;align-items:center;justify-content:center;border-right:2px solid #000;">P</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 100px 1fr 1fr 90px 70px;gap:0;align-items:start;">
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
             <div class="insp-cp-th">Decarburación<br>parcial (In)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpPDecParc" style="width:70px;text-align:center;"></div>
+            <input class="insp-val-input" id="inpPDecParc" type="number" step="0.001" min="0"
+              style="width:100%;text-align:center;box-sizing:border-box;"
+              onblur="formatDecarbur(this)">
           </div>
-          <div>
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
             <div class="insp-cp-th">Decarburación<br>libre (In)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpPDecLibre" style="width:70px;text-align:center;"></div>
+            <input class="insp-val-input" id="inpPDecLibre" type="number" step="0.001" min="0"
+              style="width:100%;text-align:center;box-sizing:border-box;"
+              onblur="formatDecarbur(this)">
           </div>
-          <div>
-            <div class="insp-cp-th">Reducción de<br>Área (%)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpRedAreaP" style="width:70px;text-align:center;"></div>
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Ø Ini / Fin<br>(mm)</div>
+            <input class="insp-val-input" id="inpPDiamI" type="number" step="any" placeholder="Inicial"
+              style="width:100%;text-align:center;background:#fffde7;margin-bottom:3px;box-sizing:border-box;" oninput="calcRedArea('P')">
+            <input class="insp-val-input" id="inpPDiamF" type="number" step="any" placeholder="Final"
+              style="width:100%;text-align:center;background:#fffde7;box-sizing:border-box;" oninput="calcRedArea('P')">
           </div>
-          <div>
-            <div class="insp-cp-th">Resistencia<br>Kg/mm² / KSI</div>
-            <div class="insp-cp-val-wrap" style="gap:3px;">
-              <input class="insp-val-input" id="inpResistP1" style="width:55px;text-align:center;">
-              <span style="font-weight:900;font-size:.8rem;align-self:center;">/</span>
-              <input class="insp-val-input" id="inpResistP2" style="width:55px;text-align:center;">
-            </div>
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Red.Área (%)<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpRedAreaP" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;">
           </div>
-          <div>
-            <div class="insp-cp-th">Dureza Prom.<br>(HRB)</div>
-            <div class="insp-cp-val-wrap"><input class="insp-val-input" id="inpDurezaP" style="width:60px;text-align:center;"></div>
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Libras<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpPLibras" type="number" step="any"
+              style="width:100%;text-align:center;background:#fff3e0;box-sizing:border-box;" oninput="calcResist('P')">
+          </div>
+          <div style="padding:4px 6px;border-right:1px solid #ddd;">
+            <div class="insp-cp-th">Kg/mm²<br>KSI</div>
+            <input class="insp-val-input" id="inpResistP1" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;margin-bottom:3px;box-sizing:border-box;">
+            <input class="insp-val-input" id="inpResistP2" readonly
+              style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;">
+          </div>
+          <div style="padding:4px 6px;">
+            <div class="insp-cp-th">HRB<br>&nbsp;</div>
+            <input class="insp-val-input" id="inpDurezaP" type="number" step="any"
+              style="width:100%;text-align:center;box-sizing:border-box;">
           </div>
         </div>
       </div>
     </div>
-
     <div style="padding:6px 14px;font-size:.7rem;color:#555;border:2px solid #000;border-top:none;">
       Fecha de consulta: <span id="inspFechaConsulta"></span>
       <span style="float:right;">FO-CA-019 &nbsp; Rev. 2.0</span>
@@ -590,7 +751,8 @@
     <div class="modal-footer-btns">
       <button class="btn-cerrar-insp" onclick="cerrarModalInsp()">Cerrar</button>
       <button class="btn-guardar-insp" onclick="guardarInspeccion()">
-        <i class="fas fa-save" style="margin-right:5px;"></i>Guardar
+        <i class="fas fa-save" style="margin-right:5px;"></i>Guardar y Enviar
+        <i class="fab fa-telegram-plane" style="margin-left:6px;font-size:.9rem;opacity:.85;"></i>
       </button>
     </div>
   </div>
@@ -608,7 +770,9 @@ const CARPETA_FOTOS_ID = ''; // Dejar vacío = raíz de Drive; o poner el ID de 
 let usuarioActual = '';
 let dataGlobal    = [];   // datos de ENTRADAS_MP (pestaña Existencia — solo ACTIVOS)
 let dataEntradas  = [];   // datos de ENTRADAS_MP pestaña Entradas (todos, con fecha)
+let dataAlambres  = [];   // datos de ORDENES pestaña Alambres
 let mesesEntradas = 6;    // meses cargados en pestaña Entradas (6, 12, 18, 24)
+let mesesAlambres = 3;    // meses cargados en pestaña Alambres (3, 6, 9, 12)
 let tabActual     = 'existencia';
 let _usuariosList = [];   // nombres para autocomplete
 let _usuariosDB   = [];   // objetos completos {nombre, password, ...}
@@ -616,7 +780,8 @@ let _usuariosDB   = [];   // objetos completos {nombre, password, ...}
 // Filtros y orden por tab — INDEPENDIENTES
 const estado = {
   existencia: { filtros: {}, ordenStack: [], campoActual: null },
-  entradas:   { filtros: {}, ordenStack: [], campoActual: null }
+  entradas:   { filtros: {}, ordenStack: [], campoActual: null },
+  alambres:   { filtros: {}, ordenStack: [], campoActual: null }
 };
 
 // Dropdown
@@ -662,6 +827,19 @@ const COLS_ENTRADAS = [
   { key:'consecutivo', label:'CONS.' },
   { key:'estado',      label:'ESTADO' },
   { key:'_insp',       label:'INSPECCIÓN', noFiltro:true }
+];
+const COLS_ALAMBRES = [
+  { key:'serie',        label:'SERIE' },
+  { key:'orden',        label:'ORDEN' },
+  { key:'codigo',       label:'CÓDIGO' },
+  { key:'tipo',         label:'TIPO' },
+  { key:'diametro',     label:'DIÁMETRO' },
+  { key:'presentacion', label:'PRESENTACIÓN' },
+  { key:'tolerancia',   label:'TOLERANCIA' },
+  { key:'acero',        label:'ACERO' },
+  { key:'cantidad',     label:'CANTIDAD', num:true },
+  { key:'unidad',       label:'UNIDAD' },
+  { key:'_insp',        label:'INSPECCIÓN', noFiltro:true }
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -758,7 +936,7 @@ function mostrarLogin() {
 window.onload = () => {
   _fdDropEl = document.getElementById('excelDrop');
 
-  // Cargar usuarios (misma función que el MainApp de Embarques)
+  // Cargar usuarios para autocomplete del login
   google.script.run
     .withSuccessHandler(list => {
       _usuariosDB   = list || [];
@@ -767,29 +945,12 @@ window.onload = () => {
     .withFailureHandler(() => {})
     .getUsuariosLogin();
 
-  // Intentar auto-login con sesión guardada
-  let savedUser = null, savedPass = null;
-  try { savedUser = localStorage.getItem(SK_USER); savedPass = localStorage.getItem(SK_PASS); } catch(e) {}
-  if (savedUser && savedPass) {
-    // Esperar a que cargue la lista y luego validar
-    const intentarAutoLogin = (intentos) => {
-      if (_usuariosDB.length > 0) {
-        const u = _usuariosDB.find(x =>
-          (typeof x === 'object' ? x.nombre : x).toUpperCase() === savedUser.toUpperCase()
-        );
-        if (u && (typeof u === 'object' ? u.password : null) === savedPass) {
-          entrarApp(savedUser.toUpperCase());
-        } else {
-          mostrarLogin();
-        }
-      } else if (intentos > 0) {
-        setTimeout(() => intentarAutoLogin(intentos - 1), 300);
-      } else {
-        // Sin lista cargada, pedir login manual
-        mostrarLogin();
-      }
-    };
-    setTimeout(() => intentarAutoLogin(10), 200);
+  // Auto-login: si hay sesión guardada entrar directo sin revalidar contraseña
+  // La sesión solo se borra al hacer logout explícito
+  let savedUser = null;
+  try { savedUser = localStorage.getItem(SK_USER); } catch(e) {}
+  if (savedUser) {
+    entrarApp(savedUser.toUpperCase());
   } else {
     mostrarLogin();
   }
@@ -797,19 +958,133 @@ window.onload = () => {
 
 
 // ═══════════════════════════════════════════════════════════════
-//  CARGA DE DATOS
+//  CÁLCULOS C y P
+// ═══════════════════════════════════════════════════════════════
+function calcRedArea(cp) {
+  const di = parseFloat(document.getElementById('inp' + cp + 'DiamI').value) || 0;
+  const df = parseFloat(document.getElementById('inp' + cp + 'DiamF').value) || 0;
+  let resultado = '';
+  if (di > 0) {
+    const ra = ((di * di - df * df) / (di * di)) * 100;
+    resultado = ra.toFixed(2);
+  }
+  document.getElementById('inpRedArea' + cp).value = resultado;
+}
+
+function calcResist(cp) {
+  const libras  = parseFloat(document.getElementById('inp' + cp + 'Libras').value) || 0;
+  const diamMP  = parseFloat((inspRowData && inspRowData.diametro) ? inspRowData.diametro : 0);
+  let kgMm2 = '', ksi = '';
+  if (libras > 0 && diamMP > 0) {
+    const radio = diamMP / 2;
+    const area  = Math.PI * radio * radio;  // mm²
+    const kg    = (libras * 0.453592) / area;
+    kgMm2 = kg.toFixed(2);
+    ksi   = (kg * 1.422).toFixed(2);
+  }
+  document.getElementById('inpResist' + cp + '1').value = kgMm2;
+  document.getElementById('inpResist' + cp + '2').value = ksi;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FOTOS: mostrar las guardadas en Drive + nuevas
+// ═══════════════════════════════════════════════════════════════
+let inspFotosUrls = [];  // URLs de fotos ya guardadas en Drive
+
+function renderFotosZona() {
+  const grid      = document.getElementById('fotosGrid');
+  const dropArea  = document.getElementById('fotosDropArea');
+  const estadoEl  = document.getElementById('fotosEstado');
+  const totalFotos = inspFotosUrls.length + inspFotosBase64.length;
+
+  grid.innerHTML = '';
+
+  // Convierte URL de Drive a thumbnail visualizable en <img>
+  const driveThumb = (url) => {
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w400';
+    return url;
+  };
+
+  // Fotos ya guardadas en Drive
+  inspFotosUrls.forEach((url, i) => {
+    const div = document.createElement('div');
+    div.className = 'foto-thumb';
+    div.style.height = totalFotos <= 2 ? '180px' : '130px';
+    div.innerHTML = `<img src="${driveThumb(url)}" style="width:100%;height:100%;object-fit:cover;"
+        onerror="this.style.display='none';this.nextSibling&&this.nextSibling.remove();
+          this.parentNode.style.background='#1e293b';
+          this.parentNode.innerHTML+='<div style=\\'color:white;font-size:.65rem;padding:8px;text-align:center;\\'>📎 Foto en Drive</div>'">
+      <button class="btn-rm" onclick="quitarFotoUrl(${i})" title="Eliminar">×</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);
+        color:white;font-size:.6rem;text-align:center;padding:2px;">Drive</div>`;
+    grid.appendChild(div);
+  });
+
+  // Fotos nuevas (base64)
+  inspFotosBase64.forEach((b64, i) => {
+    const div = document.createElement('div');
+    div.className = 'foto-thumb';
+    div.style.height = totalFotos <= 2 ? '180px' : '130px';
+    div.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover;">
+      <button class="btn-rm" onclick="quitarFotoNueva(${i})">×</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(21,101,192,.6);
+        color:white;font-size:.6rem;text-align:center;padding:2px;">Nueva</div>`;
+    grid.appendChild(div);
+  });
+
+  // Grid columns
+  if (totalFotos > 0) {
+    grid.setAttribute('data-count', totalFotos);
+    dropArea.style.display = 'none';
+  } else {
+    dropArea.style.display = '';
+  }
+
+  // Mostrar área de subir si hay espacio
+  if (totalFotos > 0 && totalFotos < 4) {
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = 'margin-top:6px;width:100%;padding:6px;border:1.5px dashed #94a3b8;' +
+      'border-radius:6px;background:#f8fafc;color:#64748b;font-size:.75rem;font-weight:700;cursor:pointer;';
+    addBtn.textContent = '+ Agregar foto (' + totalFotos + '/4)';
+    addBtn.onclick = () => document.getElementById('inputFotos').click();
+    grid.appendChild(addBtn);
+  }
+
+  if (estadoEl) {
+    estadoEl.textContent = totalFotos > 0
+      ? `✅ ${inspFotosUrls.length} en Drive + ${inspFotosBase64.length} nuevas = ${totalFotos}/4`
+      : '';
+  }
+}
+
+function quitarFotoUrl(idx) {
+  inspFotosUrls.splice(idx, 1);
+  renderFotosZona();
+}
+
+function quitarFotoNueva(idx) {
+  inspFotosBase64.splice(idx, 1);
+  renderFotosZona();
+}
+
+// Formato decarburación: siempre 3 decimales (milésimas)
+function formatDecarbur(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) el.value = v.toFixed(3);
+}
+
 // ═══════════════════════════════════════════════════════════════
 function cargarDatos() {
   document.getElementById('loader').style.display = 'flex';
-  // Pestaña Existencia: solo registros ACTIVOS (getMateriaPrimaData ya filtra)
   google.script.run
     .withSuccessHandler(data => {
       dataGlobal = data || [];
       resetFiltros('existencia');
       renderTabla();
       document.getElementById('loader').style.display = 'none';
-      // Cargar pestaña Entradas en paralelo (6 meses base)
       cargarEntradas(6, false);
+      cargarAlambres(3, false);
     })
     .withFailureHandler(e => {
       document.getElementById('loader').style.display = 'none';
@@ -862,13 +1137,18 @@ function actualizarBarraEntradas() {
 // ═══════════════════════════════════════════════════════════════
 function cambiarTab(tab) {
   tabActual = tab;
-  document.getElementById('tab-exist').classList.toggle('active', tab === 'existencia');
+  document.getElementById('tab-exist').classList.toggle('active',    tab === 'existencia');
   document.getElementById('tab-entradas').classList.toggle('active', tab === 'entradas');
+  document.getElementById('tab-alambres').classList.toggle('active', tab === 'alambres');
   document.getElementById('tablaExist').style.display     = tab === 'existencia' ? '' : 'none';
   document.getElementById('tablaEntradas').style.display  = tab === 'entradas'   ? '' : 'none';
-  const barra = document.getElementById('barraEntradas');
-  if (barra) barra.style.display = tab === 'entradas' ? 'flex' : 'none';
+  document.getElementById('tablaAlambres').style.display  = tab === 'alambres'   ? '' : 'none';
+  const barraEnt = document.getElementById('barraEntradas');
+  const barraAlm = document.getElementById('barraAlambres');
+  if (barraEnt) barraEnt.style.display = tab === 'entradas' ? 'flex' : 'none';
+  if (barraAlm) barraAlm.style.display = tab === 'alambres' ? 'flex' : 'none';
   actualizarBarraEntradas();
+  actualizarBarraAlambres();
   renderTabla();
   actualizarBotonFiltros();
 }
@@ -877,10 +1157,14 @@ function cambiarTab(tab) {
 //  FILTROS — reset
 // ═══════════════════════════════════════════════════════════════
 function resetFiltros(tab) {
-  const cols = tab === 'existencia' ? COLS_EXIST : COLS_ENTRADAS;
+  const cols = tab === 'existencia' ? COLS_EXIST
+             : tab === 'entradas'   ? COLS_ENTRADAS
+             : COLS_ALAMBRES;
   const f    = estado[tab].filtros;
-  // Cada pestaña usa su propio dataset
-  const src  = tab === 'existencia' ? dataGlobal : dataEntradas;
+  const src  = tab === 'existencia' ? dataGlobal
+             : tab === 'entradas'   ? dataEntradas
+             : dataAlambres;
+  if (!src || src.length === 0) return;
   cols.forEach(c => {
     if (c.noFiltro) return;
     f[c.key] = [...new Set(src.map(i => (i[c.key] !== undefined ? i[c.key] : '').toString()))];
@@ -899,15 +1183,16 @@ function limpiarFiltros() {
 //  RENDER TABLA
 // ═══════════════════════════════════════════════════════════════
 function renderTabla() {
-  const isExist = tabActual === 'existencia';
-  const cols    = isExist ? COLS_EXIST : COLS_ENTRADAS;
-  const bodyId  = isExist ? 'tbodyExist' : 'tbodyEntradas';
-  const headId  = isExist ? 'theadExist' : 'theadEntradas';
-  const footId  = isExist ? 'tfootExist' : 'tfootEntradas';
+  const isExist   = tabActual === 'existencia';
+  const isAlambres = tabActual === 'alambres';
+  const cols    = isExist ? COLS_EXIST : isAlambres ? COLS_ALAMBRES : COLS_ENTRADAS;
+  const bodyId  = isExist ? 'tbodyExist' : isAlambres ? 'tbodyAlambres' : 'tbodyEntradas';
+  const headId  = isExist ? 'theadExist' : isAlambres ? 'theadAlambres' : 'theadEntradas';
+  const footId  = isExist ? 'tfootExist' : isAlambres ? 'tfootAlambres' : 'tfootEntradas';
   const est     = estado[tabActual];
 
   // ── Filtrar ──
-  const srcData = tabActual === 'existencia' ? dataGlobal : dataEntradas;
+  const srcData = isExist ? dataGlobal : isAlambres ? dataAlambres : dataEntradas;
   let data = srcData.filter(row => {
     return cols.every(c => {
       if (c.noFiltro) return true;
@@ -969,12 +1254,21 @@ function renderTabla() {
     cols.forEach(c => {
       if (c.key === '_insp') {
         const tieneInsp = row._insp || row.tieneInsp;
-        html += `<td>
-          <button class="btn-insp${tieneInsp?' con-datos':''}"
-                  onclick="abrirModalInsp('${idx}', '${idx}')">
-            ${tieneInsp ? '📋 Ver' : '+ Ingresar'}
-          </button>
-        </td>`;
+        if (isAlambres) {
+          html += `<td>
+            <button class="btn-insp${tieneInsp?' con-datos':''}"
+                    onclick="abrirModalInspAlambre(${idx})">
+              ${tieneInsp ? '📋 Ver' : '+ Ingresar'}
+            </button>
+          </td>`;
+        } else {
+          html += `<td>
+            <button class="btn-insp${tieneInsp?' con-datos':''}"
+                    onclick="abrirModalInsp('${idx}', '${idx}')">
+              ${tieneInsp ? '📋 Ver' : '+ Ingresar'}
+            </button>
+          </td>`;
+        }
       } else if (c.key === 'diametro') {
         const d = parseFloat(row[c.key]) || 0;
         html += `<td>${d.toFixed(2)}</td>`;
@@ -1014,20 +1308,20 @@ function renderTabla() {
 function esFiltroActivo(tab, campo) {
   const allowed = estado[tab].filtros[campo];
   if (!allowed) return false;
-  const src  = tab === 'existencia' ? dataGlobal : dataEntradas;
+  const src  = tab === 'existencia' ? dataGlobal : tab === 'alambres' ? dataAlambres : dataEntradas;
   const todos = [...new Set(src.map(i => (i[campo] !== undefined ? i[campo] : '').toString()))];
   return allowed.length < todos.length;
 }
 
 function actualizarIconosFiltro() {
-  // Actualiza clases de th según filtros activos (ya está embebido en renderTabla)
-  // Solo actualizar el botón de quitar filtros
   actualizarBotonFiltros();
 }
 
 function actualizarBotonFiltros() {
   const btn = document.getElementById('btnQuitarFiltros');
-  const cols = tabActual === 'existencia' ? COLS_EXIST : COLS_ENTRADAS;
+  const cols = tabActual === 'existencia' ? COLS_EXIST
+             : tabActual === 'alambres'   ? COLS_ALAMBRES
+             : COLS_ENTRADAS;
   const hayActivo = cols.some(c => !c.noFiltro && esFiltroActivo(tabActual, c.key));
   btn.classList.toggle('activo', hayActivo);
 }
@@ -1197,15 +1491,36 @@ function exportarExcel() {
 //  MODAL INSPECCIÓN — ABRIR
 // ═══════════════════════════════════════════════════════════════
 const DESTINOS = [
-  { id:'GRADO2',        label:'GRADO 2',          color1:'',        color2:'',        square:(acero)=>cuadradoPorAcero(acero), bannerColor:null },
-  { id:'GRADO5',        label:'GRADO 5',          color1:'#fffde7', color2:'#fffde7', square:'#87ceeb',   bannerColor:null },
-  { id:'GRADO8',        label:'GRADO 8',          color1:'#fffde7', color2:'#fffde7', square:'#87ceeb',   bannerColor:null },
-  { id:'ESTR_A490',     label:'ESTRUCTURAL A490', color1:'#f48fb1', color2:'#f48fb1', square:null,        bannerColor:'#e91e63' },
-  { id:'ESTR_A325',     label:'ESTRUCTURAL A325', color1:'#fff176', color2:'#fff176', square:null,        bannerColor:'#f9a825' },
-  { id:'PED_ESPECIAL',  label:'PEDIDO ESPECIAL',  color1:'#c8e6c9', color2:'#c8e6c9', square:null,        bannerColor:'#2e7d32' },
-  { id:'BISAGRA',       label:'BISAGRA',          color1:'#ffffff', color2:'#ffffff', square:'#000000',   bannerColor:null },
-  { id:'BOYA',          label:'BOYA',             color1:'#87ceeb', color2:'#87ceeb', square:null,        bannerColor:'#0288d1' },
-  { id:'PIJA',          label:'PIJA',             color1:'#ce93d8', color2:'#ce93d8', square:null,        bannerColor:'#7b1fa2' }
+  { id:'10B21_NUCOR',    label:'10B21 NUCOR',              etiqueta:'Etiqueta: MORADA/AMARILLA', pintura:'Pintura: MORADO/AMARILLO',
+    color1:'#7b1fa2', squares:['#ffd600'] },
+  { id:'10B21_TERNIUM',  label:'10B21 TERNIUM',            etiqueta:'Etiqueta: MORADA',          pintura:'Pintura: MORADO/MORADO',
+    color1:'#7b1fa2', squares:[] },
+  { id:'10B21_MADERA',   label:'10B21 MADERA',             etiqueta:'Etiqueta: BLANCA/NEGRA',    pintura:'Pintura: NEGRA',
+    color1:'#212121', textColor:'#fff', squares:[] },
+  { id:'1038_ESTR',      label:'1038 ESTRUCTURAL',         etiqueta:'Etiqueta: AMARILLA',        pintura:'Pintura: AMARILLO',
+    color1:'#ffd600', squares:[] },
+  { id:'1038_G5',        label:'1038 GRADO 5',             etiqueta:'Etiqueta: AMARILLA',        pintura:'Pintura: AMARILLO/AZUL',
+    color1:'#ffd600', squares:['#1565c0'] },
+  { id:'1541_ESTR',      label:'1541 ESTRUCTURAL',         etiqueta:'Etiqueta: NARANJA',         pintura:'Pintura: NARANJA',
+    color1:'#e65100', textColor:'#fff', squares:[] },
+  { id:'1541_G5',        label:'1541 GRADO 5',             etiqueta:'Etiqueta: NARANJA',         pintura:'Pintura: NARANJA/AZUL',
+    color1:'#e65100', textColor:'#fff', squares:['#1565c0'] },
+  { id:'4140_ESTR',      label:'4140 ESTRUCTURAL',         etiqueta:'Etiqueta: ROSA',            pintura:'Pintura: ROSA',
+    color1:'#f48fb1', squares:[] },
+  { id:'4140_G8',        label:'4140 GRADO 8',             etiqueta:'Etiqueta: ROSA',            pintura:'Pintura: ROSA/AZUL',
+    color1:'#f48fb1', squares:['#1565c0'] },
+  { id:'1055_CPC',       label:'1055-1060 CPC',            etiqueta:'Etiqueta: AZUL',            pintura:'Pintura: AZUL',
+    color1:'#1565c0', textColor:'#fff', squares:[] },
+  { id:'1006_REC',       label:'1006 RECOCIDO',            etiqueta:'Etiqueta: BLANCA',          pintura:'Pintura: BLANCO/MORADO',
+    color1:'#ffffff', squares:['#7b1fa2'] },
+  { id:'1008_REC',       label:'1008 RECOCIDO',            etiqueta:'Etiqueta: BLANCA',          pintura:'Pintura: BLANCO/MORADO/NEGRO',
+    color1:'#ffffff', squares:['#7b1fa2','#212121'] },
+  { id:'1018_REC',       label:'1018 RECOCIDO',            etiqueta:'Etiqueta: VERDE',           pintura:'Pintura: VERDE/MORADO',
+    color1:'#2e7d32', textColor:'#fff', squares:['#7b1fa2'] },
+  { id:'DESV',           label:'DESVIACION 1038-1541-4140', etiqueta:'Etiqueta: BLANCA',         pintura:'Pintura: DOBLE FRANJA BLANCA',
+    color1:'#ffffff', squares:[] },
+  { id:'PED_ESP',        label:'PEDIDO ESPECIAL',          etiqueta:'Etiqueta: ESPECIAL',        pintura:'Pintura: ESPECIAL',
+    color1:'#ffffff', squares:[] }
 ];
 
 function cuadradoPorAcero(acero) {
@@ -1226,6 +1541,7 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
   inspFilaHoja = row.id || (idx + 2); // +2 porque Sheets tiene header en fila 1
   inspRowData  = row;
   inspFotosBase64 = [];
+  inspFotosUrls   = row.urlFotos ? row.urlFotos.split(',').filter(Boolean) : [];
   destinoSeleccionado = '';
 
   // Poblar datos no editables
@@ -1238,19 +1554,35 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
 
   // Fecha inspección: si ya tiene la usa, si no hoy
   const hoy = new Date().toISOString().split('T')[0];
-  document.getElementById('inpFechaInsp').value = row.fechaInsp || hoy;
+  document.getElementById('inpFechaInsp').value = row.f_insp
+    ? row.f_insp.split('/').reverse().join('-')   // convierte dd/MM/yyyy → yyyy-MM-dd
+    : hoy;
 
   // Campos editables previos
+  // Helper para partir valor con / de forma segura
+  const splitSlash = (v, idx) => {
+    if (!v) return '';
+    const s = String(v);
+    // Si parece una fecha o texto raro (no tiene dígitos ni /) devolver vacío
+    if (!/[\d.]/.test(s)) return '';
+    const parts = s.split('/');
+    return (parts[idx] || '').trim();
+  };
+
   document.getElementById('inpCDecParc').value  = row.cDecParc  || '';
   document.getElementById('inpCDecLibre').value = row.cDecLibre || '';
   document.getElementById('inpPDecParc').value  = row.pDecParc  || '';
   document.getElementById('inpPDecLibre').value = row.pDecLibre || '';
-  document.getElementById('inpResistC1').value  = row.resistC   ? row.resistC.split('/')[0] : '';
-  document.getElementById('inpResistC2').value  = row.resistC   ? row.resistC.split('/')[1] : '';
-  document.getElementById('inpResistP1').value  = row.resistP   ? row.resistP.split('/')[0] : '';
-  document.getElementById('inpResistP2').value  = row.resistP   ? row.resistP.split('/')[1] : '';
-  document.getElementById('inpRedAreaC').value  = row.redAreaC  || '';
-  document.getElementById('inpRedAreaP').value  = row.redAreaP  || '';
+  document.getElementById('inpResistC1').value  = splitSlash(row.resistC, 0);
+  document.getElementById('inpResistC2').value  = splitSlash(row.resistC, 1);
+  document.getElementById('inpResistP1').value  = splitSlash(row.resistP, 0);
+  document.getElementById('inpResistP2').value  = splitSlash(row.resistP, 1);
+  document.getElementById('inpDurezaC').value   = row.c_hrb    || '';
+  document.getElementById('inpDurezaP').value   = row.p_hrb    || '';
+  document.getElementById('inpRedAreaC').value  = row.redAreaC || '';
+  document.getElementById('inpRedAreaP').value  = row.redAreaP || '';
+
+  // Fotos: limpiar campos calculados de ØI/ØF/Libras (no se guardan, son inputs)
   document.getElementById('fotosGrid').innerHTML = '';
   document.getElementById('fotosEstado').textContent = '';
   const da = document.getElementById('fotosDropArea');
@@ -1258,13 +1590,52 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
 
   // Fecha consulta
   const fc = new Date();
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  const meses= ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const diasN  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const mesesN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   document.getElementById('inspFechaConsulta').textContent =
-    dias[fc.getDay()] + ', ' + fc.getDate() + ' de ' + meses[fc.getMonth()] + ' de ' + fc.getFullYear();
+    diasN[fc.getDay()] + ', ' + fc.getDate() + ' de ' + mesesN[fc.getMonth()] + ' de ' + fc.getFullYear();
 
-  // Resetear banner
-  aplicarDestino(null, row.aceroFull);
+  // Restaurar banner de destino si ya tenía uno guardado
+  if (row.destino) {
+    const destObj = DESTINOS.find(d => d.id === row.destino);
+    if (destObj) { aplicarDestino(destObj); }
+    else { aplicarDestino(null); }
+  } else {
+    aplicarDestino(null);
+  }
+
+  // Cargar campos calculados desde col AF si existen, si no limpiar
+  const calcMap = {};
+  if (row.calculos) {
+    row.calculos.split('|').forEach(par => {
+      const idx = par.indexOf(':');
+      if (idx > 0) calcMap[par.substring(0, idx)] = par.substring(idx + 1);
+    });
+  }
+  document.getElementById('inpCDiamI').value  = calcMap['C_DiamI']  || '';
+  document.getElementById('inpCDiamF').value  = calcMap['C_DiamF']  || '';
+  document.getElementById('inpCLibras').value = calcMap['C_Libras'] || '';
+  document.getElementById('inpPDiamI').value  = calcMap['P_DiamI']  || '';
+  document.getElementById('inpPDiamF').value  = calcMap['P_DiamF']  || '';
+  document.getElementById('inpPLibras').value = calcMap['P_Libras'] || '';
+  // Recalcular campos derivados con los valores restaurados
+  if (calcMap['C_DiamI'] || calcMap['C_DiamF']) calcRedArea('C');
+  else { document.getElementById('inpRedAreaC').value = calcMap['C_RedA'] || ''; }
+  if (calcMap['P_DiamI'] || calcMap['P_DiamF']) calcRedArea('P');
+  else { document.getElementById('inpRedAreaP').value = calcMap['P_RedA'] || ''; }
+  if (calcMap['C_Libras']) calcResist('C');
+  else {
+    document.getElementById('inpResistC1').value = calcMap['C_KgMm2'] || '';
+    document.getElementById('inpResistC2').value = calcMap['C_KSI']   || '';
+  }
+  if (calcMap['P_Libras']) calcResist('P');
+  else {
+    document.getElementById('inpResistP1').value = calcMap['P_KgMm2'] || '';
+    document.getElementById('inpResistP2').value = calcMap['P_KSI']   || '';
+  }
+
+  // Renderizar zona de fotos (mostrará las guardadas en Drive si hay)
+  renderFotosZona();
 
   document.getElementById('modalInsp').classList.add('open');
 }
@@ -1277,19 +1648,34 @@ function cerrarModalInsp() {
 //  MODAL DESTINO
 // ═══════════════════════════════════════════════════════════════
 function abrirModalDestino() {
-  const acero = inspRowData ? (inspRowData.aceroFull || '') : '';
   const btns = document.getElementById('destinoBtns');
   btns.innerHTML = '';
   DESTINOS.forEach(d => {
-    const sqColor = typeof d.square === 'function' ? d.square(acero) : d.square;
-    const c1 = d.color1 || '#ffffff';
+    const tc  = d.textColor || '#000';
     const btn = document.createElement('button');
     btn.className = 'destino-btn';
-    btn.style.background = c1 || '#f5f5f5';
-    btn.style.color = '#000';
-    btn.style.border = '2px solid #ccc';
-    btn.innerHTML = d.label + (sqColor ? ` <span style="display:inline-block;width:22px;height:14px;background:${sqColor};vertical-align:middle;margin-left:8px;border:1px solid #888;"></span>` : '');
-    btn.onclick = () => { aplicarDestino(d, acero); cerrarModalDestino(); };
+    btn.style.cssText = `background:${d.color1||'#fff'};color:${tc};border:2px solid rgba(0,0,0,.15);
+      display:grid;grid-template-columns:100px 1fr auto;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;`;
+    // Columna izquierda: etiqueta y pintura pequeños
+    const info = document.createElement('div');
+    info.style.cssText = 'text-align:left;font-size:.65rem;font-weight:700;line-height:1.5;opacity:.9;';
+    info.innerHTML = `<div>${d.etiqueta||''}</div><div>${d.pintura||''}</div>`;
+    btn.appendChild(info);
+    // Centro: nombre grande
+    const nom = document.createElement('div');
+    nom.style.cssText = 'font-size:1rem;font-weight:900;text-align:center;';
+    nom.textContent = d.label;
+    btn.appendChild(nom);
+    // Derecha: cuadros
+    const sq = document.createElement('div');
+    sq.style.cssText = 'display:flex;gap:3px;justify-content:flex-end;';
+    (d.squares||[]).forEach(col => {
+      const s = document.createElement('span');
+      s.style.cssText = `display:inline-block;width:28px;height:18px;background:${col};border:2px solid rgba(0,0,0,.4);border-radius:2px;`;
+      sq.appendChild(s);
+    });
+    btn.appendChild(sq);
+    btn.onclick = () => { aplicarDestino(d); cerrarModalDestino(); };
     btns.appendChild(btn);
   });
   document.getElementById('modalDestino').classList.add('open');
@@ -1299,28 +1685,66 @@ function cerrarModalDestino() {
   document.getElementById('modalDestino').classList.remove('open');
 }
 
-function aplicarDestino(dest, acero) {
-  const banner      = document.getElementById('inspBanner');
-  const gradeEl     = document.getElementById('inspBannerGrade');
-  const gradeSquare = document.getElementById('inspGradeSquare');
-  const gradeTxt    = document.getElementById('inspGradeTxt');
+function aplicarDestino(dest) {
+  const banner    = document.getElementById('inspBanner');
+  const gradeEl   = document.getElementById('inspBannerGrade');
+  const gradeTxt  = document.getElementById('inspGradeTxt');
+  const squaresEl = document.getElementById('inspGradeSquares');
+  const subEl     = document.getElementById('inspBannerSub');
+  const subVacio  = document.getElementById('inspBannerSubVacio');
+  const etqEl     = document.getElementById('inspBannerEtiqueta');
+  const pinEl     = document.getElementById('inspBannerPintura');
 
   if (!dest) {
-    banner.style.background   = '#fff';
-    gradeEl.style.background  = '#fff';
-    gradeTxt.textContent      = 'Clic para ingresar destino';
-    gradeSquare.style.background = '';
+    banner.style.background  = '#fff';
+    gradeEl.style.background = '#fff';
+    gradeEl.style.color      = '#000';
+    gradeTxt.textContent     = 'Clic para ingresar destino';
+    gradeTxt.style.fontSize  = '1rem';
+    gradeTxt.style.color     = '#64748b';
+    if (squaresEl) squaresEl.innerHTML = '';
+    if (subEl)     subEl.style.display    = 'none';
+    if (subVacio)  subVacio.style.display = '';
+    destinoSeleccionado = '';
     return;
   }
 
-  destinoSeleccionado = dest.id;
-  const sqColor = typeof dest.square === 'function' ? dest.square(acero) : dest.square;
-  const c1 = dest.color1 || '#fff';
+  destinoSeleccionado     = dest.id;
+  const tc                = dest.textColor || '#000';
+  banner.style.background = dest.color1 || '#fff';
+  gradeEl.style.background= dest.color1 || '#fff';
+  gradeEl.style.color     = tc;
+  gradeTxt.style.color    = tc;
+  gradeTxt.style.fontSize = '1.6rem';
+  gradeTxt.textContent    = dest.label;
 
-  banner.style.background  = c1;
-  gradeEl.style.background = c1;
-  gradeTxt.textContent     = dest.label;
-  gradeSquare.style.background = sqColor || '';
+  // Cuadros de color — rectángulos altos altura completa del banner
+  if (squaresEl) {
+    squaresEl.innerHTML = '';
+    squaresEl.style.display    = 'flex';
+    squaresEl.style.alignSelf  = 'stretch';
+    squaresEl.style.flexShrink = '0';
+    (dest.squares || []).forEach(col => {
+      const s = document.createElement('div');
+      s.style.width       = '180px';
+      s.style.height      = '100%';
+      s.style.minHeight   = '62px';
+      s.style.background  = col;
+      s.style.borderLeft  = '2px solid rgba(0,0,0,0.3)';
+      s.style.flexShrink  = '0';
+      squaresEl.appendChild(s);
+    });
+  }
+
+  // Etiqueta y pintura izquierda
+  if (subEl && etqEl && pinEl) {
+    etqEl.textContent    = dest.etiqueta || '';
+    pinEl.textContent    = dest.pintura  || '';
+    etqEl.style.color    = tc;
+    pinEl.style.color    = tc;
+    subEl.style.display  = '';
+    if (subVacio) subVacio.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1357,17 +1781,15 @@ function comprimirImagen(file, callback) {
 }
 
 function procesarFoto(file) {
-  if (inspFotosBase64.length >= 4) {
-    document.getElementById('fotosEstado').textContent = '⚠ Máximo 4 fotos permitidas.';
+  const total = inspFotosUrls.length + inspFotosBase64.length;
+  if (total >= 4) {
+    swalOk({ icon:'warning', title:'Límite de 4 fotos alcanzado',
+      text:'Debes eliminar alguna foto antes de agregar más.',
+      timer:3000, showConfirmButton:false });
     return;
   }
   document.getElementById('fotosEstado').textContent = '⏳ Procesando...';
-  comprimirImagen(file, (b64, kb) => {
-    inspFotosBase64.push(b64);
-    renderFotosGrid();
-    document.getElementById('fotosEstado').textContent =
-      `✅ ${inspFotosBase64.length}/4 fotos (~${kb} KB la última)`;
-  });
+  comprimirImagen(file, (b64, kb) => agregarFotoBase64(b64, kb));
 }
 
 function fotosSeleccionadas(e) {
@@ -1381,30 +1803,20 @@ function fotoDrop(e) {
   Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')).forEach(f => procesarFoto(f));
 }
 
-function renderFotosGrid() {
-  const grid     = document.getElementById('fotosGrid');
-  const dropArea = document.getElementById('fotosDropArea');
-  const n        = inspFotosBase64.length;
+function renderFotosGrid() { renderFotosZona(); }  // alias para compatibilidad
 
-  // Si hay fotos, ocultar drop-area y mostrar grid
-  if (dropArea) dropArea.style.display = n > 0 ? 'none' : '';
-
-  grid.innerHTML = '';
-  if (n === 0) return;
-
-  // Ajustar columnas según cantidad
-  grid.setAttribute('data-count', n);
-  // Altura proporcional: el grid ocupa el espacio del drop-area (≈200px)
-  const thumbH = n <= 2 ? '180px' : '130px';
-
-  inspFotosBase64.forEach((b64, i) => {
-    const div = document.createElement('div');
-    div.className = 'foto-thumb';
-    div.style.height = thumbH;
-    div.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover;">
-      <button class="btn-rm" onclick="quitarFoto(${i})">×</button>`;
-    grid.appendChild(div);
-  });
+function agregarFotoBase64(b64, kb) {
+  const total = inspFotosUrls.length + inspFotosBase64.length;
+  if (total >= 4) {
+    swalOk({ icon:'warning', title:'Límite alcanzado',
+      text:'Ya tienes 4 fotos. Elimina alguna antes de agregar más.',
+      timer:3000, showConfirmButton:false });
+    return;
+  }
+  inspFotosBase64.push(b64);
+  renderFotosZona();
+  document.getElementById('fotosEstado').textContent =
+    `✅ ${inspFotosUrls.length + inspFotosBase64.length}/4 fotos (~${kb} KB la última)`;
 }
 
 function quitarFoto(idx) {
@@ -1417,47 +1829,525 @@ function quitarFoto(idx) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  GUARDAR INSPECCIÓN
+//  LOADER PROGRESO GUARDADO
 // ═══════════════════════════════════════════════════════════════
-function guardarInspeccion() {
+let _guardadoOk   = false;  // señal de que GAS respondió
+let _guardadoRes  = null;   // resultado del GAS
+let _lastPayload  = null;   // payload enviado, para actualizar memoria al finalizar
+let _barraTimer   = null;
+let _barraStart   = 0;
+const BARRA_DURACION = 20000; // 20 segundos (incluye envío a Telegram)
+
+function mostrarLoaderGuardado() {
+  _guardadoOk  = false;
+  _guardadoRes = null;
+  _barraStart  = Date.now();
+
+  // Crear overlay si no existe
+  let el = document.getElementById('loader-guardado');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loader-guardado';
+    el.style.cssText = `position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:99999;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;`;
+    el.innerHTML = `
+      <div style="background:white;border-radius:16px;padding:32px 40px;min-width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+        <div style="font-size:2rem;margin-bottom:10px;">💾</div>
+        <div id="lg-titulo" style="font-weight:900;font-size:1rem;color:#0f172a;margin-bottom:6px;">Guardando inspección...</div>
+        <div id="lg-subtitulo" style="font-size:.78rem;color:#64748b;margin-bottom:16px;">Subiendo fotos y registrando datos</div>
+        <div style="background:#e2e8f0;border-radius:99px;height:10px;overflow:hidden;margin-bottom:10px;">
+          <div id="lg-barra" style="height:100%;width:0%;background:linear-gradient(90deg,#1565c0,#38bdf8);border-radius:99px;transition:width .3s ease;"></div>
+        </div>
+        <div id="lg-pct" style="font-size:.72rem;color:#94a3b8;font-weight:700;">0%</div>
+      </div>`;
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  document.getElementById('lg-titulo').textContent    = 'Guardando inspección...';
+  document.getElementById('lg-subtitulo').textContent = 'Subiendo fotos y registrando datos';
+  document.getElementById('lg-barra').style.width     = '0%';
+  document.getElementById('lg-pct').textContent       = '0%';
+
+  // Animar barra cada 200ms
+  _barraTimer = setInterval(() => {
+    const elapsed = Date.now() - _barraStart;
+
+    if (_guardadoOk) {
+      // Respuesta llegó — llenar de golpe
+      clearInterval(_barraTimer);
+      document.getElementById('lg-barra').style.transition = 'width .4s ease';
+      document.getElementById('lg-barra').style.width = '100%';
+      document.getElementById('lg-pct').textContent   = '100%';
+      setTimeout(() => finalizarGuardado(_guardadoRes), 450);
+      return;
+    }
+
+    // Progreso simulado con fases
+    const pct = Math.min(90, Math.round((elapsed / BARRA_DURACION) * 90));
+    document.getElementById('lg-barra').style.width = pct + '%';
+    document.getElementById('lg-pct').textContent   = pct + '%';
+
+    // Cambiar mensaje según fase
+    if (pct >= 50 && pct < 90) {
+      document.getElementById('lg-titulo').textContent    = 'Enviando reporte a Telegram...';
+      document.getElementById('lg-subtitulo').textContent = '📲 Generando imagen y enviando notificación';
+    }
+
+    if (elapsed >= BARRA_DURACION && !_guardadoOk) {
+      document.getElementById('lg-titulo').textContent    = 'Esto está tardando más de lo normal';
+      document.getElementById('lg-subtitulo').textContent = 'Espera un poco más, guardando...';
+    }
+  }, 200);
+}
+
+function finalizarGuardado(res) {
+  const el = document.getElementById('loader-guardado');
+  if (el) el.style.display = 'none';
+  clearInterval(_barraTimer);
+
+  if (res && res.ok) {
+    // Cerrar el modal que esté abierto
+    if (document.getElementById('modalInspAlambre').classList.contains('open')) {
+      cerrarModalInspAlambre();
+      // Actualizar registro en dataAlambres
+      if (inspAlambreRow) {
+        const idx = dataAlambres.findIndex(r => String(r.id) === String(inspAlambreRow.id));
+        if (idx >= 0) dataAlambres[idx].tieneInsp = true;
+      }
+    } else {
+      cerrarModalInsp();
+      actualizarRegistroEnMemoria(inspFilaHoja, {
+        tieneInsp:  true,
+        f_insp:     _lastPayload ? _lastPayload.fechaInsp : '',
+        cDecParc:   _lastPayload ? _lastPayload.cDecParc  : '',
+        cDecLibre:  _lastPayload ? _lastPayload.cDecLibre : '',
+        pDecParc:   _lastPayload ? _lastPayload.pDecParc  : '',
+        pDecLibre:  _lastPayload ? _lastPayload.pDecLibre : '',
+        resistC:    _lastPayload ? _lastPayload.resistC   : '',
+        resistP:    _lastPayload ? _lastPayload.resistP   : '',
+        redAreaC:   _lastPayload ? _lastPayload.redAreaC  : '',
+        redAreaP:   _lastPayload ? _lastPayload.redAreaP  : '',
+        c_hrb:      _lastPayload ? _lastPayload.durezaC   : '',
+        p_hrb:      _lastPayload ? _lastPayload.durezaP   : '',
+        destino:    _lastPayload ? _lastPayload.destino   : ''
+      });
+    }
+
+    renderTabla();
+    console.log('[Telegram] ok:', res.telegramOk, '| error:', res.telegramError || 'ninguno');
+    console.log('[canvasB64 length enviado]:', _lastPayload ? (_lastPayload.canvasB64 ? _lastPayload.canvasB64.length : 'NULL') : 'sin payload');
+
+    const tgMsg = res.telegramOk
+      ? '✅ Guardado y enviado a Telegram'
+      : '✅ Guardado (Telegram: ' + (res.telegramError || 'sin respuesta') + ')';
+
+    setTimeout(() => {
+      swalOk({ icon:'success', title:'¡Guardado!',
+        text: tgMsg,
+        timer:3000, showConfirmButton:false, timerProgressBar:true });
+    }, 50);
+  } else {
+    swalOk({ icon:'error', title:'Error al guardar',
+      text: res ? res.msg : 'Sin respuesta del servidor.' });
+  }
+}
+
+// Actualiza el registro en dataGlobal o dataEntradas sin recargar todo
+function actualizarRegistroEnMemoria(registroId, cambios) {
+  [dataGlobal, dataEntradas].forEach(arr => {
+    const row = arr.find(r => String(r.id) === String(registroId));
+    if (row) {
+      Object.assign(row, cambios);
+      // Asegurar que tieneInsp refleje el estado actual
+      row.tieneInsp = !!(row.f_insp || row.res_c || row.tieneInsp);
+    }
+  });
+}
+
+function generarCanvasInspeccion() {
+  return new Promise(resolve => {
+    const row = inspRowData || {};
+
+    const W    = 900;
+    const IZQ  = 370;
+    const INFO = 310;
+    const CP   = 100;
+    const PIE  = 34;
+    const H    = 56 + 58 + INFO + 2 + CP * 2 + 30 + PIE;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const c = canvas.getContext('2d');
+
+    c.fillStyle = '#fff';
+    c.fillRect(0, 0, W, H);
+
+    let curY = 0;
+
+    // ══ TÍTULO ══
+    c.fillStyle = '#fff'; c.fillRect(0, 0, W, 56);
+    c.strokeStyle = '#000'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(0, 56); c.lineTo(W, 56); c.stroke();
+    c.fillStyle = '#111'; c.font = 'bold 18px Arial'; c.textAlign = 'center';
+    c.fillText('REGISTRO DE INSPECCIÓN - RECOCIDO', W/2, 36);
+    curY = 56;
+
+    // ══ BANNER DESTINO — igual al modal: izq etiqueta/pintura | centro nombre grande | der cuadros ══
+    const destObj   = DESTINOS.find(d => d.id === destinoSeleccionado);
+    const destColor = destObj ? (destObj.color1 || '#f3f4f6') : '#f3f4f6';
+    const destTC    = destObj ? (destObj.textColor || '#000') : '#000';
+    const BANNER_H  = 64;
+    c.fillStyle = destColor; c.fillRect(0, curY, W, BANNER_H);
+    c.strokeStyle = '#000'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(0, curY + BANNER_H); c.lineTo(W, curY + BANNER_H); c.stroke();
+
+    // Cuadros de color — rectángulos grandes a la derecha, altura completa
+    const squares = destObj ? (destObj.squares || []) : [];
+    const sqW = 180;
+    const sqX0 = W - squares.length * sqW;
+    squares.forEach((col, si) => {
+      c.fillStyle = col;
+      c.fillRect(sqX0 + si * sqW, curY, sqW, BANNER_H);
+      c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 1;
+      c.strokeRect(sqX0 + si * sqW, curY, sqW, BANNER_H);
+    });
+    const textAreaW = sqX0 - 155; // ancho para el nombre (sin zona izq ni cuadros)
+
+    // Etiqueta y pintura — columna izquierda
+    c.fillStyle = destTC; c.textAlign = 'left';
+    c.font = 'bold 11px Arial';
+    c.fillText(destObj ? (destObj.etiqueta || '') : '', 10, curY + 22);
+    c.fillText(destObj ? (destObj.pintura  || '') : '', 10, curY + 38);
+
+    // Nombre del destino — centrado en la zona media
+    c.fillStyle = destTC; c.font = 'bold 28px Arial'; c.textAlign = 'center';
+    c.fillText(destObj ? destObj.label : 'SIN DESTINO', 155 + textAreaW / 2, curY + 40);
+
+    curY += BANNER_H;
+
+    // ══ BLOQUE INFO ══
+    const INFO_Y = curY;
+    c.fillStyle = '#fff'; c.fillRect(0, INFO_Y, W, INFO);
+
+    // Separador vertical izq/der — línea negra gruesa
+    c.strokeStyle = '#000'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(IZQ, INFO_Y); c.lineTo(IZQ, INFO_Y + INFO); c.stroke();
+
+    // Borde inferior del bloque info — negro grueso
+    c.beginPath(); c.moveTo(0, INFO_Y + INFO); c.lineTo(W, INFO_Y + INFO); c.stroke();
+
+    // Helper: label bold + caja input
+    const campoInput = (lbl, val, y) => {
+      c.fillStyle = '#111'; c.font = 'bold 13px Arial'; c.textAlign = 'left';
+      c.fillText(lbl + ':', 12, y + 16);
+      const boxX = 145, boxW = IZQ - 158, boxH = 28;
+      c.fillStyle = '#fff'; c.fillRect(boxX, y, boxW, boxH);
+      c.strokeStyle = '#9ca3af'; c.lineWidth = 1; c.strokeRect(boxX, y, boxW, boxH);
+      c.fillStyle = '#111'; c.font = '13px Arial'; c.textAlign = 'left';
+      c.fillText(String(val || '—'), boxX + 7, y + 18);
+    };
+
+    const fechaInspVal = (() => {
+      const v = document.getElementById('inpFechaInsp').value || '';
+      if (v.includes('-')) { const p = v.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+      return v || '—';
+    })();
+
+    const filas = [
+      ['Fecha de insp', fechaInspVal],
+      ['PROVEEDOR',     row.proveedor],
+      ['SAE',           row.aceroFull],
+      ['Ø MP (MM)',     parseFloat(row.diametro||0).toFixed(2)],
+      ['Sello MP',      row.sello],
+      ['COLADA',        row.colada],
+      ['PESO (KG)',     row.kilos]
+    ];
+    const rowH = Math.floor((INFO - 10) / filas.length);
+    filas.forEach((f, i) => campoInput(f[0], f[1], INFO_Y + 5 + i * rowH));
+
+    // ══ FOTOS derecha ══
+    // Fotos: combinar Drive (descargadas via GAS) + nuevas base64
+    const nNew = inspFotosBase64.length;
+    const nDrv = inspFotosUrls.length;
+    const DER_X  = IZQ + 6;
+    const DER_W2 = W - IZQ - 10;
+    const DER_H  = INFO - 10;
+
+    // Convertir URL de Drive a thumbnail para intentar carga directa
+    const driveThumb = (url) => {
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      return m ? 'https://lh3.googleusercontent.com/d/' + m[1] + '=w400' : url;
+    };
+
+    const renderDerecha = () => new Promise(rDer => {
+      // Combinar: primero Drive (intentamos cargarlas), luego base64 nuevas
+      const todasSrcs = [
+        ...inspFotosUrls.map(u => ({ src: driveThumb(u), tipo: 'Drive' })),
+        ...inspFotosBase64.map(b => ({ src: b, tipo: 'Nueva' }))
+      ].slice(0, 4);
+
+      const nTot = todasSrcs.length;
+      if (nTot === 0) { rDer(); return; }
+
+      const cols  = nTot <= 1 ? 1 : 2;
+      const rows2 = Math.ceil(nTot / cols);
+      const fw = Math.floor((DER_W2 - (cols-1)*6) / cols);
+      const fh = Math.floor((DER_H  - (rows2-1)*6) / rows2);
+
+      const proms = todasSrcs.map(({ src, tipo }, idx) => new Promise(r2 => {
+        const col2 = idx % cols, row2 = Math.floor(idx / cols);
+        const fx = DER_X + col2 * (fw + 6);
+        const fy = INFO_Y + 5 + row2 * (fh + 6);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          c.drawImage(img, fx, fy, fw, fh);
+          const barColor = tipo === 'Drive' ? 'rgba(0,0,0,0.45)' : 'rgba(21,101,192,0.55)';
+          c.fillStyle = barColor; c.fillRect(fx, fy + fh - 22, fw, 22);
+          c.fillStyle = '#fff'; c.font = '11px Arial'; c.textAlign = 'center';
+          c.fillText(tipo, fx + fw/2, fy + fh - 7);
+          c.strokeStyle = '#cbd5e1'; c.lineWidth = 1; c.strokeRect(fx, fy, fw, fh);
+          r2();
+        };
+        img.onerror = () => {
+          // Fallback: placeholder con ícono
+          c.fillStyle = '#f1f5f9'; c.fillRect(fx, fy, fw, fh);
+          c.strokeStyle = '#cbd5e1'; c.lineWidth = 1; c.strokeRect(fx, fy, fw, fh);
+          c.fillStyle = 'rgba(0,0,0,0.45)'; c.fillRect(fx, fy + fh - 22, fw, 22);
+          c.fillStyle = '#fff'; c.font = '11px Arial'; c.textAlign = 'center';
+          c.fillText(tipo, fx + fw/2, fy + fh - 7);
+          c.fillStyle = '#94a3b8'; c.font = '32px Arial';
+          c.fillText('📷', fx + fw/2, fy + fh/2);
+          r2();
+        };
+        img.src = src;
+      }));
+      Promise.all(proms).then(rDer);
+    });
+
+    curY = INFO_Y + INFO + 2;
+
+    // ══ FILAS C y P ══
+    // Columnas: Dec.Parc | Dec.Libre | Red.Área(%) | Kg/mm² | KSI | HRB
+    // Distribuidas en todo el ancho menos etiqueta
+    const CP_LEFT = 52;
+    const CP_DEFS = [
+      {h:'Dec.\nparcial (In)', calc:false},
+      {h:'Dec.\nlibre (In)',   calc:false},
+      {h:'Red.Área (%)',       calc:true},
+      {h:'Kg/mm²',            calc:true},
+      {h:'KSI',               calc:true},
+      {h:'HRB',               calc:false}
+    ];
+    const nCpCols = CP_DEFS.length;
+    const cpColW  = Math.floor((W - CP_LEFT) / nCpCols);
+
+    const drawCPRow = (label, vals, y) => {
+      c.fillStyle = '#fff'; c.fillRect(0, y, W, CP);
+      // Borde superior e inferior negro grueso
+      c.strokeStyle = '#000'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke();
+      c.beginPath(); c.moveTo(0, y+CP); c.lineTo(W, y+CP); c.stroke();
+      // Separador vertical tras etiqueta
+      c.beginPath(); c.moveTo(CP_LEFT, y); c.lineTo(CP_LEFT, y+CP); c.stroke();
+
+      // Etiqueta C/P
+      c.fillStyle = '#f59e0b'; c.font = 'bold 26px Arial'; c.textAlign = 'center';
+      c.fillText(label, CP_LEFT/2, y + CP/2 + 9);
+
+      CP_DEFS.forEach((col, i) => {
+        const cx = CP_LEFT + cpColW * i + cpColW / 2;
+        // Header pequeño gris
+        c.fillStyle = '#6b7280'; c.font = '11px Arial'; c.textAlign = 'center';
+        col.h.split('\n').forEach((p, pi) => c.fillText(p, cx, y + 16 + pi * 13));
+        // Caja de valor
+        const bw2 = cpColW - 16, bh2 = 32;
+        const bx  = CP_LEFT + cpColW * i + 8;
+        const by  = y + CP - bh2 - 8;
+        c.fillStyle = col.calc ? '#eff6ff' : '#fff';
+        c.fillRect(bx, by, bw2, bh2);
+        c.strokeStyle = col.calc ? '#93c5fd' : '#9ca3af'; c.lineWidth = 1;
+        c.strokeRect(bx, by, bw2, bh2);
+        c.fillStyle = col.calc ? '#1565c0' : '#111';
+        c.font = 'bold 16px Arial'; c.textAlign = 'center';
+        c.fillText(String(vals[i] || '—'), bx + bw2/2, by + 22);
+      });
+    };
+
+    const CP_Y = curY;
+    drawCPRow('C',[
+      document.getElementById('inpCDecParc').value||'—',
+      document.getElementById('inpCDecLibre').value||'—',
+      document.getElementById('inpRedAreaC').value||'—',
+      document.getElementById('inpResistC1').value||'—',
+      document.getElementById('inpResistC2').value||'—',
+      document.getElementById('inpDurezaC').value||'—'
+    ], CP_Y);
+    drawCPRow('P',[
+      document.getElementById('inpPDecParc').value||'—',
+      document.getElementById('inpPDecLibre').value||'—',
+      document.getElementById('inpRedAreaP').value||'—',
+      document.getElementById('inpResistP1').value||'—',
+      document.getElementById('inpResistP2').value||'—',
+      document.getElementById('inpDurezaP').value||'—'
+    ], CP_Y + CP);
+
+    // ══ PIE ══
+    const PIE_Y2 = CP_Y + CP * 2 + 6;
+    c.fillStyle = '#6b7280'; c.font = '11px Arial'; c.textAlign = 'left';
+    c.fillText('Fecha de consulta: ' + new Date().toLocaleDateString('es-MX',
+      {weekday:'long', day:'numeric', month:'long', year:'numeric'}), 12, PIE_Y2 + 22);
+    c.textAlign = 'right';
+    c.fillText('FO-CA-019   Rev. 2.0', W - 12, PIE_Y2 + 22);
+
+    renderDerecha().then(() => {
+      resolve(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]);
+    });
+  });
+}
+
+function drawFooterWhite(c, W, H, usuario) {
+  c.fillStyle = '#1565c0'; c.fillRect(0, H-32, W, 32);
+  c.fillStyle = 'white'; c.font = '11px Arial'; c.textAlign = 'left';
+  c.fillText('Registrado por: ' + usuario + '   |   ' + new Date().toLocaleString('es-MX'), 14, H-11);
+  c.textAlign = 'right';
+  c.fillText('TOOL CN — FO-CA-019 Rev 2.0', W-14, H-11);
+}
+
+function detectarCambios(payload, rowAnterior) {
+  const mapCampos = {
+    cDecParc:  'C_DEC_PARC',  cDecLibre: 'C_DEC_LIBRE',
+    pDecParc:  'P_DEC_PARC',  pDecLibre: 'P_DEC_LIBRE',
+    resistC:   'RESIST_C',    resistP:   'RESIST_P',
+    redAreaC:  'RED_AREA_C',  redAreaP:  'RED_AREA_P',
+    durezaC:   'C_HRB',       durezaP:   'P_HRB',
+    destino:   'DESTINO',     fechaInsp: 'FECHA_INSP'
+  };
+  const anterior = {
+    cDecParc:  rowAnterior.cDecParc  || '',
+    cDecLibre: rowAnterior.cDecLibre || '',
+    pDecParc:  rowAnterior.pDecParc  || '',
+    pDecLibre: rowAnterior.pDecLibre || '',
+    resistC:   rowAnterior.resistC   || '',
+    resistP:   rowAnterior.resistP   || '',
+    redAreaC:  rowAnterior.redAreaC  || '',
+    redAreaP:  rowAnterior.redAreaP  || '',
+    durezaC:   rowAnterior.c_hrb     || '',
+    durezaP:   rowAnterior.p_hrb     || '',
+    destino:   rowAnterior.destino   || '',
+    fechaInsp: rowAnterior.f_insp    || ''
+  };
+  // Normalizar fechaInsp del payload a dd/MM/yyyy para comparar igual que f_insp
+  const fechaPayload = payload.fechaInsp
+    ? payload.fechaInsp.split('-').reverse().join('/')  // yyyy-MM-dd → dd/MM/yyyy
+    : '';
+  const payloadNorm = Object.assign({}, payload, { fechaInsp: fechaPayload });
+  const cambios = [];
+  Object.keys(mapCampos).forEach(k => {
+    const vOld = String(anterior[k]    || '').trim();
+    const vNew = String(payloadNorm[k] || '').trim();
+    if (vOld !== vNew) {
+      cambios.push('Actualizó ' + mapCampos[k] + ' de "' + (vOld||'vacío') + '" a "' + (vNew||'vacío') + '"');
+    }
+  });
+  return cambios.length > 0 ? cambios.join(' | ') : 'Sin cambios detectados';
+}
+// ═══════════════════════════════════════════════════════════════
+async function guardarInspeccion() {
   if (!inspFilaHoja) {
-    swalOk({ icon:'error', title:'Error', text:'Sin referencia de fila. Cierra y vuelve a abrir el registro.' });
+    swalOk({ icon:'error', title:'Error', text:'Sin referencia de fila.' }); return;
+  }
+  if (!destinoSeleccionado) {
+    swalOk({ icon:'warning', title:'Destino requerido',
+      text:'Selecciona un destino antes de guardar (haz clic en el banner superior).' });
     return;
   }
 
+  const calculos = [
+    'C_DiamI:'+(document.getElementById('inpCDiamI').value||''),
+    'C_DiamF:'+(document.getElementById('inpCDiamF').value||''),
+    'C_RedA:' +(document.getElementById('inpRedAreaC').value||''),
+    'C_Libras:'+(document.getElementById('inpCLibras').value||''),
+    'C_KgMm2:'+(document.getElementById('inpResistC1').value||''),
+    'C_KSI:'  +(document.getElementById('inpResistC2').value||''),
+    'P_DiamI:'+(document.getElementById('inpPDiamI').value||''),
+    'P_DiamF:'+(document.getElementById('inpPDiamF').value||''),
+    'P_RedA:' +(document.getElementById('inpRedAreaP').value||''),
+    'P_Libras:'+(document.getElementById('inpPLibras').value||''),
+    'P_KgMm2:'+(document.getElementById('inpResistP1').value||''),
+    'P_KSI:'  +(document.getElementById('inpResistP2').value||'')
+  ].join('|');
+
+  // Detectar cambios vs datos anteriores para el historial
+  const descripcionCambios = detectarCambios({
+    cDecParc:  document.getElementById('inpCDecParc').value,
+    cDecLibre: document.getElementById('inpCDecLibre').value,
+    pDecParc:  document.getElementById('inpPDecParc').value,
+    pDecLibre: document.getElementById('inpPDecLibre').value,
+    resistC:   document.getElementById('inpResistC1').value+'/'+document.getElementById('inpResistC2').value,
+    resistP:   document.getElementById('inpResistP1').value+'/'+document.getElementById('inpResistP2').value,
+    redAreaC:  document.getElementById('inpRedAreaC').value,
+    redAreaP:  document.getElementById('inpRedAreaP').value,
+    durezaC:   document.getElementById('inpDurezaC').value,
+    durezaP:   document.getElementById('inpDurezaP').value,
+    destino:   destinoSeleccionado,
+    fechaInsp: document.getElementById('inpFechaInsp').value
+  }, inspRowData || {});
+
+  // Generar imagen canvas para Telegram
+  // Si hay fotos en Drive, pedirle al GAS que las descargue como base64
+  // para que aparezcan reales en el canvas (evita CORS)
+  const _urlsBackup   = [...inspFotosUrls];
+  const _b64Backup    = [...inspFotosBase64];
+  if (inspFotosUrls.length > 0) {
+    await new Promise(resolve => {
+      google.script.run
+        .withSuccessHandler(b64s => {
+          const validas = (b64s || []).filter(Boolean);
+          inspFotosBase64 = [...validas, ..._b64Backup];
+          inspFotosUrls   = [];
+          resolve();
+        })
+        .withFailureHandler(() => resolve())
+        .getFotosBase64(_urlsBackup);
+    });
+  }
+
+  const canvasB64 = await generarCanvasInspeccion();
+  console.log('[guardarInspeccion] canvasB64 length:', canvasB64 ? canvasB64.length : 'NULL');
+
+  // Restaurar para que el payload envíe correctamente las URLs y fotos nuevas
+  inspFotosUrls   = _urlsBackup;
+  inspFotosBase64 = _b64Backup;
+
   const payload = {
-    registroId: inspFilaHoja,   // ID de col A para localizar la fila en GAS
-    usuario:    usuarioActual,
-    fechaInsp:  document.getElementById('inpFechaInsp').value,
-    cDecParc:   document.getElementById('inpCDecParc').value,
-    cDecLibre:  document.getElementById('inpCDecLibre').value,
-    pDecParc:   document.getElementById('inpPDecParc').value,
-    pDecLibre:  document.getElementById('inpPDecLibre').value,
-    resistC:    document.getElementById('inpResistC1').value + '/' + document.getElementById('inpResistC2').value,
-    resistP:    document.getElementById('inpResistP1').value + '/' + document.getElementById('inpResistP2').value,
-    redAreaC:   document.getElementById('inpRedAreaC').value,
-    redAreaP:   document.getElementById('inpRedAreaP').value,
-    destino:    destinoSeleccionado,
-    fotos:      inspFotosBase64
+    registroId:          inspFilaHoja,
+    usuario:             usuarioActual,
+    fechaInsp:           document.getElementById('inpFechaInsp').value,
+    cDecParc:            document.getElementById('inpCDecParc').value,
+    cDecLibre:           document.getElementById('inpCDecLibre').value,
+    pDecParc:            document.getElementById('inpPDecParc').value,
+    pDecLibre:           document.getElementById('inpPDecLibre').value,
+    resistC:             document.getElementById('inpResistC1').value+'/'+document.getElementById('inpResistC2').value,
+    resistP:             document.getElementById('inpResistP1').value+'/'+document.getElementById('inpResistP2').value,
+    redAreaC:            document.getElementById('inpRedAreaC').value,
+    redAreaP:            document.getElementById('inpRedAreaP').value,
+    durezaC:             document.getElementById('inpDurezaC').value,
+    durezaP:             document.getElementById('inpDurezaP').value,
+    destino:             destinoSeleccionado,
+    calculos:            calculos,
+    descripcionCambios:  descripcionCambios,
+    urlsFotosExistentes: inspFotosUrls.join(','),
+    fotos:               inspFotosBase64,
+    canvasB64:           canvasB64
   };
 
-  document.getElementById('loader').style.display = 'flex';
+  mostrarLoaderGuardado();
+  _lastPayload = payload;
+
   google.script.run
-    .withSuccessHandler(res => {
-      document.getElementById('loader').style.display = 'none';
-      if (res && res.ok) {
-        cerrarModalInsp();
-        cargarDatos();
-        swalOk({ icon:'success', title:'¡Guardado!', text:'Inspección registrada correctamente.',
-          timer:2000, showConfirmButton:false, timerProgressBar:true });
-      } else {
-        swalOk({ icon:'error', title:'Error al guardar', text: res ? res.msg : 'Sin respuesta del servidor.' });
-      }
-    })
-    .withFailureHandler(e => {
-      document.getElementById('loader').style.display = 'none';
-      swalOk({ icon:'error', title:'Error de conexión', text: String(e) });
-    })
+    .withSuccessHandler(res => { _guardadoOk = true; _guardadoRes = res; })
+    .withFailureHandler(e   => { _guardadoOk = true; _guardadoRes = { ok:false, msg:String(e) }; })
     .guardarInspeccionAlambron(payload);
 }
 
@@ -1465,19 +2355,736 @@ function guardarInspeccion() {
 //  SWEET ALERT SEGURO — usa Swal si existe, alert nativo si no
 // ═══════════════════════════════════════════════════════════════
 function swalOk(opts) {
-  if (typeof Swal !== 'undefined') {
-    Swal.fire(opts);
-  } else {
-    alert((opts.title ? opts.title + '\n' : '') + (opts.text || ''));
-  }
+  const _mostrar = () => {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire(opts);
+      return;
+    }
+    // Fallback NO bloqueante — div flotante, nunca alert() nativo
+    const color = opts.icon === 'success' ? '#2e7d32'
+                : opts.icon === 'error'   ? '#c62828'
+                : opts.icon === 'warning' ? '#e65100' : '#1565c0';
+    const d = document.createElement('div');
+    d.style.cssText = `position:fixed;top:28px;left:50%;transform:translateX(-50%);z-index:99999;
+      background:${color};color:white;padding:16px 32px;border-radius:14px;
+      font-weight:900;font-size:.95rem;box-shadow:0 8px 30px rgba(0,0,0,.35);
+      max-width:90%;text-align:center;min-width:280px;`;
+    d.innerHTML = `<div style="font-size:1.05rem">${opts.title || ''}</div>`
+      + (opts.text ? `<div style="font-size:.82rem;opacity:.9;margin-top:5px">${opts.text}</div>` : '');
+    document.body.appendChild(d);
+    setTimeout(() => { if (d.parentNode) d.remove(); }, opts.timer || 3500);
+  };
+  // Intentar hasta 3 segundos a que Swal cargue
+  let intentos = 0;
+  const _try = () => {
+    if (typeof Swal !== 'undefined' || intentos >= 15) { _mostrar(); }
+    else { intentos++; setTimeout(_try, 200); }
+  };
+  _try();
 }
+
 function mostrarToast(msg, tipo) {
   if (typeof Swal !== 'undefined') {
-    Swal.fire({ toast:true, position:'bottom', icon:tipo||'info',
+    Swal.fire({ toast:true, position:'bottom-end', icon:tipo||'info',
       title:msg, showConfirmButton:false, timer:3000, timerProgressBar:true });
   } else {
-    alert(msg);
+    swalOk({ icon: tipo||'info', title: msg, timer: 3000 });
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ALAMBRES — Carga y funciones
+// ═══════════════════════════════════════════════════════════════
+function cargarAlambres(meses, mostrarLoader) {
+  mesesAlambres = meses;
+  if (mostrarLoader) document.getElementById('loader').style.display = 'flex';
+  google.script.run
+    .withSuccessHandler(data => {
+      if (mostrarLoader) document.getElementById('loader').style.display = 'none';
+      dataAlambres = data || [];
+      resetFiltros('alambres');
+      if (tabActual === 'alambres') renderTabla();
+      actualizarBarraAlambres();
+    })
+    .withFailureHandler(e => {
+      if (mostrarLoader) document.getElementById('loader').style.display = 'none';
+      swalOk({ icon:'error', title:'Error al cargar alambres', text: String(e) });
+    })
+    .getOrdenesAlambres(meses);
+}
+
+function cargarMasAlambres() {
+  const nuevos = mesesAlambres + 3;
+  if (nuevos > 12) {
+    swalOk({ icon:'info', title:'Límite alcanzado', text:'El máximo es 12 meses.',
+      timer:2000, showConfirmButton:false });
+    return;
+  }
+  cargarAlambres(nuevos, true);
+}
+
+function actualizarBarraAlambres() {
+  const barra = document.getElementById('barraAlambres');
+  const lbl   = document.getElementById('lblMesesAlambres');
+  const btn   = document.getElementById('btnCargarMasAlambres');
+  if (!barra) return;
+  barra.style.display = tabActual === 'alambres' ? 'flex' : 'none';
+  if (lbl) lbl.textContent = 'Mostrando últimos ' + mesesAlambres + ' meses — ' + dataAlambres.length + ' registros';
+  if (btn) btn.style.display = mesesAlambres >= 12 ? 'none' : '';
+}
+
+// ─── Modal Inspección Alambre ───────────────────────────────
+let inspAlambreRow = null;
+let inspAlambreIdx = null;
+let inspAlambreFotosBase64 = [];
+let inspAlambreFotosUrls   = [];
+// Rollos: array de objetos {c_dec_parc, c_dec_libre, p_dec_parc, p_dec_libre,
+//   c_diam_i, c_diam_f, c_red_area, c_libras, c_resist1, c_resist2, c_hrb,
+//   p_diam_i, p_diam_f, p_red_area, p_libras, p_resist1, p_resist2, p_hrb}
+let inspAlambreRollos = [{}];
+let inspAlambreRolloActivo = 0;
+
+function abrirModalInspAlambre(idx) {
+  // Obtener row del dataset filtrado actual
+  const isAlambres = true;
+  const est  = estado['alambres'];
+  const src  = dataAlambres;
+  const data = src.filter(row => {
+    return COLS_ALAMBRES.every(c => {
+      if (c.noFiltro) return true;
+      const allowed = est.filtros[c.key];
+      if (!allowed) return true;
+      return allowed.includes((row[c.key] !== undefined ? row[c.key] : '').toString());
+    });
+  });
+  const row = data[idx];
+  if (!row) return;
+
+  inspAlambreRow   = row;
+  inspAlambreIdx   = idx;
+  inspAlambreFotosBase64 = [];
+  inspAlambreFotosUrls   = row.url_fotos ? row.url_fotos.split(',').filter(Boolean) : [];
+
+  // Cargar rollos guardados desde calculos
+  if (row.calculos) {
+    inspAlambreRollos = parsearRollosGuardados(row);
+  } else {
+    inspAlambreRollos = [crearRolloVacio()];
+  }
+  inspAlambreRolloActivo = 0;
+
+  // Poblar datos fijos — ORDEN = "SERIE.ORDEN", Ø MP + PRESENTACION juntos
+  document.getElementById('iaOrdenCompleto').textContent  = (row.serie||'') + '.' + (row.orden||'');
+  document.getElementById('iaCodigo').textContent         = row.codigo       || '—';
+  document.getElementById('iaTipo').textContent           = row.tipo         || '—';
+  document.getElementById('iaDiamPresentacion').textContent = (row.diametro||'—') + ' mm (' + (row.presentacion||'—') + ')';
+  document.getElementById('iaToleranciaTxt').textContent  = row.tolerancia   || '—';
+  document.getElementById('iaAcero').textContent          = row.acero        || '—';
+
+  renderRollosAlambres();
+  renderFotosAlambre();
+
+  // Destino guardado
+  const dobj = row.disposicion ? DESTINOS.find(d => d.id === row.disposicion) : null;
+  aplicarDestinoAlambre(dobj || null);
+
+  document.getElementById('modalInspAlambre').classList.add('open');
+}
+
+function crearRolloVacio() {
+  return { c_dec_parc:'', c_dec_libre:'', p_dec_parc:'', p_dec_libre:'',
+           c_diam_i:'', c_diam_f:'', c_red_area:'', c_libras:'', c_resist1:'', c_resist2:'', c_hrb:'',
+           p_diam_i:'', p_diam_f:'', p_red_area:'', p_libras:'', p_resist1:'', p_resist2:'', p_hrb:'' };
+}
+
+function parsearRollosGuardados(row) {
+  // Columnas guardadas como "1-val|2-val|3-val"
+  const campos = ['c_dec_parc','c_dec_libre','p_dec_parc','p_dec_libre',
+    'c_red_area','p_red_area','c_hrb','p_hrb'];
+  const resistC = (row.resist_c || '').split('|');
+  const resistP = (row.resist_p || '').split('|');
+  const calculos = {};
+  // Parsear col AT (calculos) para DiamI, DiamF, Libras
+  (row.calculos || '').split('|').forEach(par => {
+    const eq = par.indexOf(':'); if (eq < 0) return;
+    const k = par.substring(0, eq), v = par.substring(eq+1);
+    if (!calculos[k]) calculos[k] = [];
+    // formato "N-valor"
+    const dash = v.indexOf('-');
+    if (dash > 0) {
+      const n = parseInt(v.substring(0, dash)) - 1;
+      calculos[k][n] = v.substring(dash+1);
+    }
+  });
+
+  // Determinar cuántos rollos hay
+  const nRollos = Math.max(1, ...campos.map(k => {
+    const v = row[k] || '';
+    return v.split('|').filter(Boolean).length;
+  }));
+
+  return Array.from({length: nRollos}, (_, i) => {
+    const getVal = (k) => {
+      const arr = (row[k] || '').split('|');
+      const part = arr[i] || '';
+      const dash = part.indexOf('-');
+      return dash >= 0 ? part.substring(dash+1) : part;
+    };
+    const rc = (resistC[i] || '').split('/');
+    const rp = (resistP[i] || '').split('/');
+    return {
+      c_dec_parc: getVal('c_dec_parc'),
+      c_dec_libre:getVal('c_dec_libre'),
+      p_dec_parc: getVal('p_dec_parc'),
+      p_dec_libre:getVal('p_dec_libre'),
+      c_red_area: getVal('c_red_area'),
+      p_red_area: getVal('p_red_area'),
+      c_hrb:      getVal('c_hrb'),
+      p_hrb:      getVal('p_hrb'),
+      c_resist1:  rc[0] || '', c_resist2: rc[1] || '',
+      p_resist1:  rp[0] || '', p_resist2: rp[1] || '',
+      c_diam_i: (calculos['C_DiamI'] && calculos['C_DiamI'][i]) || '',
+      c_diam_f: (calculos['C_DiamF'] && calculos['C_DiamF'][i]) || '',
+      c_libras:  (calculos['C_Libras'] && calculos['C_Libras'][i]) || '',
+      p_diam_i: (calculos['P_DiamI'] && calculos['P_DiamI'][i]) || '',
+      p_diam_f: (calculos['P_DiamF'] && calculos['P_DiamF'][i]) || '',
+      p_libras:  (calculos['P_Libras'] && calculos['P_Libras'][i]) || ''
+    };
+  });
+}
+
+function renderRollosAlambres() {
+  const cont = document.getElementById('iaRollosContainer');
+  if (!cont) return;
+  const n = inspAlambreRollos.length;
+  const activo = inspAlambreRolloActivo;
+  // Tabs de rollos
+  let tabsHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">';
+  for (let i = 0; i < n; i++) {
+    const actCls = i === activo ? 'background:#1565c0;color:white;' : 'background:#e2e8f0;color:#333;';
+    tabsHtml += `<button onclick="cambiarRolloActivo(${i})"
+      style="${actCls}padding:4px 12px;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;">
+      Rollo ${i+1}
+    </button>`;
+    // Botón eliminar si hay más de 1 rollo
+    if (n > 1) {
+      tabsHtml += `<button onclick="eliminarRolloAlambre(${i})" title="Eliminar rollo ${i+1}"
+        style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;padding:4px 8px;border-radius:6px;
+               font-weight:700;cursor:pointer;font-size:.75rem;margin-left:-4px;">✕</button>`;
+    }
+  }
+  tabsHtml += `<button onclick="agregarRolloAlambre()"
+    style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;padding:4px 10px;border-radius:6px;font-weight:700;cursor:pointer;font-size:.8rem;">
+    + Rollo
+  </button></div>`;
+
+  const r = inspAlambreRollos[activo] || crearRolloVacio();
+  const diam = parseFloat((inspAlambreRow && inspAlambreRow.diametro) || 0);
+
+  const tabsHtmlFila = (cp) => {
+    const pfx = cp.toLowerCase();
+    return `
+    <div style="display:grid;grid-template-columns:1fr 1fr 90px 1fr 1fr 80px 60px;gap:0;align-items:start;border-bottom:1px solid #e5e7eb;">
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Decarburación<br>parcial (In)</div>
+        <input class="insp-val-input" type="number" step="0.001" min="0"
+          style="width:100%;text-align:center;box-sizing:border-box;"
+          value="${r[pfx+'_dec_parc']||''}"
+          onblur="formatDecarbur(this)"
+          oninput="iaGuardarCampo('${pfx}_dec_parc',this.value)">
+      </div>
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Decarburación<br>libre (In)</div>
+        <input class="insp-val-input" type="number" step="0.001" min="0"
+          style="width:100%;text-align:center;box-sizing:border-box;"
+          value="${r[pfx+'_dec_libre']||''}"
+          onblur="formatDecarbur(this)"
+          oninput="iaGuardarCampo('${pfx}_dec_libre',this.value)">
+      </div>
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Ø Ini/Fin<br>(mm)</div>
+        <input class="insp-val-input" type="number" step="any" placeholder="Inicial"
+          style="width:100%;text-align:center;background:#fffde7;box-sizing:border-box;margin-bottom:2px;"
+          value="${r[pfx+'_diam_i']||''}"
+          oninput="iaGuardarCampo('${pfx}_diam_i',this.value);iaCalcRedArea('${cp}')">
+        <input class="insp-val-input" type="number" step="any" placeholder="Final"
+          style="width:100%;text-align:center;background:#fffde7;box-sizing:border-box;"
+          value="${r[pfx+'_diam_f']||''}"
+          oninput="iaGuardarCampo('${pfx}_diam_f',this.value);iaCalcRedArea('${cp}')">
+      </div>
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Red.Área (%)<br>&nbsp;</div>
+        <input class="insp-val-input" readonly
+          style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;"
+          value="${r[pfx+'_red_area']||''}">
+      </div>
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Libras<br>&nbsp;</div>
+        <input class="insp-val-input" type="number" step="any"
+          style="width:100%;text-align:center;background:#fff3e0;box-sizing:border-box;"
+          value="${r[pfx+'_libras']||''}"
+          oninput="iaGuardarCampo('${pfx}_libras',this.value);iaCalcResist('${cp}',${diam})">
+      </div>
+      <div style="padding:3px 5px;border-right:1px solid #ddd;">
+        <div class="insp-cp-th">Kg/mm²<br>KSI</div>
+        <input class="insp-val-input" readonly
+          style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;margin-bottom:2px;box-sizing:border-box;"
+          value="${r[pfx+'_resist1']||''}">
+        <input class="insp-val-input" readonly
+          style="width:100%;text-align:center;background:#eff6ff;font-weight:900;color:#1565c0;box-sizing:border-box;"
+          value="${r[pfx+'_resist2']||''}">
+      </div>
+      <div style="padding:3px 5px;">
+        <div class="insp-cp-th">HRB<br>&nbsp;</div>
+        <input class="insp-val-input" type="number" step="any"
+          style="width:100%;text-align:center;box-sizing:border-box;"
+          value="${r[pfx+'_hrb']||''}"
+          oninput="iaGuardarCampo('${pfx}_hrb',this.value)">
+      </div>
+    </div>`;
+  };
+
+  cont.innerHTML = tabsHtml +
+    `<div style="display:grid;grid-template-columns:38px 1fr;border:2px solid #000;border-radius:4px;overflow:hidden;">
+      <div class="insp-cp-label" style="font-size:1.3rem;font-weight:900;color:#f59e0b;display:flex;align-items:center;justify-content:center;border-right:2px solid #000;">C</div>
+      <div>${tabsHtmlFila('C')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:38px 1fr;border:2px solid #000;border-top:none;border-radius:0 0 4px 4px;overflow:hidden;margin-bottom:8px;">
+      <div class="insp-cp-label" style="font-size:1.3rem;font-weight:900;color:#f59e0b;display:flex;align-items:center;justify-content:center;border-right:2px solid #000;">P</div>
+      <div>${tabsHtmlFila('P')}</div>
+    </div>`;
+}
+
+function iaGuardarCampo(campo, valor) {
+  if (!inspAlambreRollos[inspAlambreRolloActivo]) return;
+  inspAlambreRollos[inspAlambreRolloActivo][campo] = valor;
+}
+
+function iaCalcRedArea(cp) {
+  const r   = inspAlambreRollos[inspAlambreRolloActivo];
+  const pfx = cp.toLowerCase();
+  const di  = parseFloat(r[pfx+'_diam_i']) || 0;
+  const df  = parseFloat(r[pfx+'_diam_f']) || 0;
+  let res   = '';
+  if (di > 0) res = (((di*di - df*df) / (di*di)) * 100).toFixed(2);
+  iaGuardarCampo(pfx+'_red_area', res);
+  renderRollosAlambres();
+}
+
+function iaCalcResist(cp, diamMP) {
+  const r    = inspAlambreRollos[inspAlambreRolloActivo];
+  const pfx  = cp.toLowerCase();
+  const lib  = parseFloat(r[pfx+'_libras']) || 0;
+  const diam = parseFloat(diamMP) || 0;
+  let r1 = '', r2 = '';
+  if (lib > 0 && diam > 0) {
+    const radio = diam / 2;
+    const area  = Math.PI * radio * radio;
+    const kg    = (lib * 0.453592) / area;
+    r1 = kg.toFixed(2);
+    r2 = (kg * 1.422).toFixed(2);
+  }
+  iaGuardarCampo(pfx+'_resist1', r1);
+  iaGuardarCampo(pfx+'_resist2', r2);
+  renderRollosAlambres();
+}
+
+function cambiarRolloActivo(idx) {
+  inspAlambreRolloActivo = idx;
+  renderRollosAlambres();
+}
+
+function agregarRolloAlambre() {
+  inspAlambreRollos.push(crearRolloVacio());
+  inspAlambreRolloActivo = inspAlambreRollos.length - 1;
+  renderRollosAlambres();
+}
+
+function eliminarRolloAlambre(idx) {
+  if (inspAlambreRollos.length <= 1) {
+    swalOk({icon:'warning',title:'Mínimo 1 rollo',text:'Debe haber al menos un rollo.',timer:2000,showConfirmButton:false});
+    return;
+  }
+  inspAlambreRollos.splice(idx, 1);
+  // Ajustar índice activo si es necesario
+  if (inspAlambreRolloActivo >= inspAlambreRollos.length) {
+    inspAlambreRolloActivo = inspAlambreRollos.length - 1;
+  }
+  renderRollosAlambres();
+}
+
+let destinoAlambreSeleccionado = '';
+function aplicarDestinoAlambre(dest) {
+  destinoAlambreSeleccionado = dest ? dest.id : '';
+  const banner   = document.getElementById('iaBanner');
+  const gradeTxt = document.getElementById('iaGradeTxt');
+  const squaresEl= document.getElementById('iaGradeSquares');
+  const subEl    = document.getElementById('iaBannerSub');
+  const etqEl    = document.getElementById('iaBannerEtiqueta');
+  const pinEl    = document.getElementById('iaBannerPintura');
+  const subVacio = document.getElementById('iaBannerSubVacio');
+
+  if (!dest) {
+    banner.style.background = '#fff';
+    gradeTxt.textContent    = 'Clic para ingresar destino';
+    gradeTxt.style.fontSize = '1rem';
+    gradeTxt.style.color    = '#64748b';
+    if (squaresEl) squaresEl.innerHTML = '';
+    if (subEl) subEl.style.display = 'none';
+    if (subVacio) subVacio.style.display = '';
+    return;
+  }
+  const tc = dest.textColor || '#000';
+  banner.style.background = dest.color1 || '#fff';
+  gradeTxt.textContent    = dest.label;
+  gradeTxt.style.fontSize = '1.6rem';
+  gradeTxt.style.color    = tc;
+  if (squaresEl) {
+    squaresEl.innerHTML = '';
+    squaresEl.style.display    = 'flex';
+    squaresEl.style.alignSelf  = 'stretch';
+    squaresEl.style.flexShrink = '0';
+    (dest.squares||[]).forEach(col => {
+      const s = document.createElement('div');
+      s.style.width = '180px'; s.style.height = '100%'; s.style.minHeight = '62px';
+      s.style.background = col; s.style.borderLeft = '2px solid rgba(0,0,0,0.3)';
+      squaresEl.appendChild(s);
+    });
+  }
+  if (subEl && etqEl && pinEl) {
+    etqEl.textContent = dest.etiqueta||''; pinEl.textContent = dest.pintura||'';
+    etqEl.style.color = tc; pinEl.style.color = tc;
+    subEl.style.display = '';
+    if (subVacio) subVacio.style.display = 'none';
+  }
+}
+
+function renderFotosAlambre() {
+  const grid     = document.getElementById('iaFotosGrid');
+  const dropArea = document.getElementById('iaFotosDropArea');
+  const estadoEl = document.getElementById('iaFotosEstado');
+  const total    = inspAlambreFotosUrls.length + inspAlambreFotosBase64.length;
+  if (!grid) return;
+  grid.innerHTML = '';
+  const driveThumb = (url) => {
+    const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    return m ? 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400' : url;
+  };
+  inspAlambreFotosUrls.forEach((url, i) => {
+    const div = document.createElement('div');
+    div.className = 'foto-thumb';
+    div.innerHTML = `<img src="${driveThumb(url)}" style="width:100%;height:100%;object-fit:cover;"
+      onerror="this.parentNode.innerHTML='<div style=\\'padding:8px;font-size:.7rem;color:#64748b;\\'>📎 Drive</div>'">
+      <button class="btn-rm" onclick="iaQuitarFotoUrl(${i})">×</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:white;font-size:.6rem;text-align:center;padding:2px;">Drive</div>`;
+    grid.appendChild(div);
+  });
+  inspAlambreFotosBase64.forEach((b64, i) => {
+    const div = document.createElement('div');
+    div.className = 'foto-thumb';
+    div.innerHTML = `<img src="${b64}" style="width:100%;height:100%;object-fit:cover;">
+      <button class="btn-rm" onclick="iaQuitarFotoNueva(${i})">×</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(21,101,192,.6);color:white;font-size:.6rem;text-align:center;padding:2px;">Nueva</div>`;
+    grid.appendChild(div);
+  });
+  if (dropArea) dropArea.style.display = total > 0 ? 'none' : '';
+  if (total > 0 && total < 16) {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'margin-top:6px;width:100%;padding:6px;border:1.5px dashed #94a3b8;border-radius:6px;background:#f8fafc;color:#64748b;font-size:.75rem;font-weight:700;cursor:pointer;';
+    btn.textContent = `+ Agregar foto (${total}/16)`;
+    btn.onclick = () => document.getElementById('inputFotosAlambre').click();
+    grid.appendChild(btn);
+  }
+  if (estadoEl) estadoEl.textContent = total > 0
+    ? `✅ ${inspAlambreFotosUrls.length} en Drive + ${inspAlambreFotosBase64.length} nuevas = ${total}/16` : '';
+}
+
+function iaQuitarFotoUrl(idx)   { inspAlambreFotosUrls.splice(idx,1);   renderFotosAlambre(); }
+function iaQuitarFotoNueva(idx) { inspAlambreFotosBase64.splice(idx,1); renderFotosAlambre(); }
+
+function iaFotosSeleccionadas(event) {
+  const files = Array.from(event.target.files);
+  const total = inspAlambreFotosUrls.length + inspAlambreFotosBase64.length;
+  const espacio = 16 - total;
+  if (espacio <= 0) {
+    swalOk({icon:'warning',title:'Límite de 16 fotos',text:'Elimina algunas para agregar más.',timer:2500,showConfirmButton:false});
+    return;
+  }
+  files.slice(0, espacio).forEach(file => {
+    comprimirImagen(file, (b64) => { inspAlambreFotosBase64.push(b64); renderFotosAlambre(); });
+  });
+  event.target.value = '';
+}
+
+// ─── Serializar rollos para guardar ─────────────────────────
+function serializarRollos() {
+  const campos = ['c_dec_parc','c_dec_libre','p_dec_parc','p_dec_libre',
+    'c_red_area','p_red_area','c_hrb','p_hrb'];
+  const result = {};
+  campos.forEach(k => {
+    result[k] = inspAlambreRollos.map((r,i) => `${i+1}-${r[k]||''}`).join('|');
+  });
+  // resist_c y resist_p como "kg/ksi|kg/ksi|..."
+  result.resist_c = inspAlambreRollos.map(r => `${r.c_resist1||''}/${r.c_resist2||''}`).join('|');
+  result.resist_p = inspAlambreRollos.map(r => `${r.p_resist1||''}/${r.p_resist2||''}`).join('|');
+  // calculos en col AT
+  const calcKeys = ['C_DiamI','C_DiamF','C_RedA','C_Libras','C_KgMm2','C_KSI',
+                    'P_DiamI','P_DiamF','P_RedA','P_Libras','P_KgMm2','P_KSI'];
+  const calcVals = {
+    C_DiamI:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_diam_i||''}`).join('|'),
+    C_DiamF:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_diam_f||''}`).join('|'),
+    C_RedA:   inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_red_area||''}`).join('|'),
+    C_Libras: inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_libras||''}`).join('|'),
+    C_KgMm2:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_resist1||''}`).join('|'),
+    C_KSI:    inspAlambreRollos.map((r,i)=>`${i+1}-${r.c_resist2||''}`).join('|'),
+    P_DiamI:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_diam_i||''}`).join('|'),
+    P_DiamF:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_diam_f||''}`).join('|'),
+    P_RedA:   inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_red_area||''}`).join('|'),
+    P_Libras: inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_libras||''}`).join('|'),
+    P_KgMm2:  inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_resist1||''}`).join('|'),
+    P_KSI:    inspAlambreRollos.map((r,i)=>`${i+1}-${r.p_resist2||''}`).join('|'),
+  };
+  result.calculos = calcKeys.map(k => `${k}:${calcVals[k]}`).join('|');
+  return result;
+}
+
+async function guardarInspeccionAlambre() {
+  if (!inspAlambreRow) { swalOk({icon:'error',title:'Error',text:'Sin registro seleccionado.'}); return; }
+  if (!destinoAlambreSeleccionado) {
+    swalOk({icon:'warning',title:'Destino requerido',text:'Selecciona un destino antes de guardar.'});
+    return;
+  }
+  const serial = serializarRollos();
+
+  // Canvas Telegram
+  const urlsBack = [...inspAlambreFotosUrls];
+  const b64Back  = [...inspAlambreFotosBase64];
+  if (inspAlambreFotosUrls.length > 0) {
+    await new Promise(res => {
+      google.script.run
+        .withSuccessHandler(b64s => {
+          inspAlambreFotosBase64 = [...(b64s||[]).filter(Boolean), ...b64Back];
+          inspAlambreFotosUrls   = [];
+          res();
+        })
+        .withFailureHandler(() => res())
+        .getFotosBase64(urlsBack);
+    });
+  }
+  const canvasB64 = await generarCanvasAlambre();
+  inspAlambreFotosUrls   = urlsBack;
+  inspAlambreFotosBase64 = b64Back;
+
+  const payload = {
+    registroId:    inspAlambreRow.id,
+    usuario:       usuarioActual,
+    ...serial,
+    disposicion:   destinoAlambreSeleccionado,
+    urlsExistentes:inspAlambreFotosUrls.join(','),
+    fotos:         inspAlambreFotosBase64,
+    canvasB64:     canvasB64
+  };
+
+  mostrarLoaderGuardado();
+  google.script.run
+    .withSuccessHandler(res => { _guardadoOk = true; _guardadoRes = res; })
+    .withFailureHandler(e  => { _guardadoOk = true; _guardadoRes = {ok:false,msg:String(e)}; })
+    .guardarInspeccionAlambre(payload);
+}
+
+function generarCanvasAlambre() {
+  return new Promise(resolve => {
+    const row = inspAlambreRow || {};
+    const nRollos = inspAlambreRollos.length;
+    const W = 820;
+    const HEADER_H  = 52;
+    const BANNER_H  = 62;
+    const INFO_H    = 220;
+    const ROLLO_H   = 90; // altura por rollo
+    const PIE_H     = 32;
+    const H = HEADER_H + BANNER_H + INFO_H + nRollos * ROLLO_H * 2 + PIE_H + 10;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const c = canvas.getContext('2d');
+    c.fillStyle = '#fff'; c.fillRect(0,0,W,H);
+
+    let curY = 0;
+    // Título
+    c.fillStyle = '#1565c0'; c.fillRect(0,0,W,HEADER_H);
+    c.fillStyle = 'white'; c.font = 'bold 16px Arial'; c.textAlign = 'center';
+    c.fillText('REGISTRO DE INSPECCIÓN - RECOCIDO (ALAMBRES)', W/2, 34);
+    curY = HEADER_H;
+
+    // Banner destino
+    const destObj   = DESTINOS.find(d => d.id === destinoAlambreSeleccionado);
+    const destColor = destObj ? (destObj.color1||'#f3f4f6') : '#f3f4f6';
+    const destTC    = destObj ? (destObj.textColor||'#000') : '#000';
+    c.fillStyle = destColor; c.fillRect(0,curY,W,BANNER_H);
+    c.strokeStyle='#000'; c.lineWidth=2;
+    c.beginPath(); c.moveTo(0,curY+BANNER_H); c.lineTo(W,curY+BANNER_H); c.stroke();
+    const sq = destObj ? (destObj.squares||[]) : [];
+    const sqW = 180;
+    const sqX0 = W - sq.length * sqW;
+    sq.forEach((col,si) => {
+      c.fillStyle=col; c.fillRect(sqX0+si*sqW,curY,sqW,BANNER_H);
+    });
+    c.fillStyle=destTC; c.font='bold 11px Arial'; c.textAlign='left';
+    c.fillText(destObj?(destObj.etiqueta||''):'', 10, curY+22);
+    c.fillText(destObj?(destObj.pintura||''):'',  10, curY+38);
+    c.fillStyle=destTC; c.font='bold 26px Arial'; c.textAlign='center';
+    c.fillText(destObj?destObj.label:'SIN DESTINO', 155+(sqX0-155)/2, curY+40);
+    curY += BANNER_H;
+
+    // Bloque info
+    const IZQ = 360;
+    c.fillStyle='#fff'; c.fillRect(0,curY,W,INFO_H);
+    c.strokeStyle='#000'; c.lineWidth=2;
+    c.beginPath(); c.moveTo(IZQ,curY); c.lineTo(IZQ,curY+INFO_H); c.stroke();
+    c.beginPath(); c.moveTo(0,curY+INFO_H); c.lineTo(W,curY+INFO_H); c.stroke();
+
+    const campo = (lbl,val,y) => {
+      c.fillStyle='#111'; c.font='bold 12px Arial'; c.textAlign='left';
+      c.fillText(lbl+':',10,y+14);
+      c.fillStyle='#fff'; c.fillRect(130,y,IZQ-140,26);
+      c.strokeStyle='#9ca3af'; c.lineWidth=1; c.strokeRect(130,y,IZQ-140,26);
+      c.fillStyle='#111'; c.font='12px Arial'; c.textAlign='left';
+      c.fillText(String(val||'—'),136,y+17);
+    };
+    const infoY = curY+8;
+    campo('Orden',        row.orden,        infoY);
+    campo('Serie',        row.serie,        infoY+32);
+    campo('Código',       row.codigo,       infoY+64);
+    campo('Tipo',         row.tipo,         infoY+96);
+    campo('Ø MP (mm)',    row.diametro,     infoY+128);
+    campo('Presentación', row.presentacion, infoY+160);
+    campo('Acero',        row.acero,        infoY+192);
+
+    // Fotos derecha
+    const nFotos = inspAlambreFotosBase64.length;
+    const DER_X = IZQ+8, DER_W = W-IZQ-12, DER_H2 = INFO_H-10;
+    if (nFotos > 0) {
+      const cols2 = nFotos<=1?1:nFotos<=4?2:4;
+      const rows2 = Math.ceil(nFotos/cols2);
+      const fw = Math.floor((DER_W-(cols2-1)*4)/cols2);
+      const fh = Math.floor((DER_H2-(rows2-1)*4)/rows2);
+      const proms = inspAlambreFotosBase64.slice(0,16).map((b64,fi) => new Promise(r2 => {
+        const img = new Image();
+        img.onload = () => {
+          const col2=fi%cols2, row2=Math.floor(fi/cols2);
+          c.drawImage(img, DER_X+col2*(fw+4), curY+5+row2*(fh+4), fw, fh);
+          r2();
+        };
+        img.onerror = () => r2();
+        img.src = b64;
+      }));
+      Promise.all(proms).then(() => terminarCanvasAlambre(c,W,H,curY,INFO_H,ROLLO_H,PIE_H,resolve));
+      return;
+    }
+    terminarCanvasAlambre(c,W,H,curY,INFO_H,ROLLO_H,PIE_H,resolve);
+  });
+}
+
+function terminarCanvasAlambre(c,W,H,infoY,INFO_H,ROLLO_H,PIE_H,resolve) {
+  const row = inspAlambreRow || {};
+  let curY = infoY + INFO_H + 4;
+
+  // Cabecera de columnas C y P
+  const CP_LEFT = 40;
+  const cpCols = ['Dec.\nParc.','Dec.\nLibre','Red.Área%','Kg/mm²','KSI','HRB'];
+  const cpColW = (W - CP_LEFT) / cpCols.length;
+
+  const drawRolloFila = (label, vals, y) => {
+    c.fillStyle = label==='C' ? '#f8fafc' : '#fff';
+    c.fillRect(0,y,W,ROLLO_H);
+    c.strokeStyle='#e5e7eb'; c.lineWidth=1; c.strokeRect(0,y,W,ROLLO_H);
+    c.strokeStyle='#000'; c.lineWidth=2;
+    c.beginPath(); c.moveTo(0,y); c.lineTo(W,y); c.stroke();
+    c.beginPath(); c.moveTo(CP_LEFT,y); c.lineTo(CP_LEFT,y+ROLLO_H); c.stroke();
+    c.fillStyle='#f59e0b'; c.font='bold 18px Arial'; c.textAlign='center';
+    c.fillText(label, CP_LEFT/2, y+ROLLO_H/2+6);
+    cpCols.forEach((h,i) => {
+      const cx = CP_LEFT + cpColW*i + cpColW/2;
+      c.fillStyle='#94a3b8'; c.font='10px Arial'; c.textAlign='center';
+      h.split('\n').forEach((p,pi) => c.fillText(p, cx, y+14+pi*11));
+      const esCalc = i>=2 && i<=4;
+      const bx=CP_LEFT+cpColW*i+8, bw2=cpColW-16, bh2=30, by=y+ROLLO_H-bh2-8;
+      c.fillStyle=esCalc?'#eff6ff':'#fff'; c.fillRect(bx,by,bw2,bh2);
+      c.strokeStyle=esCalc?'#93c5fd':'#9ca3af'; c.lineWidth=1; c.strokeRect(bx,by,bw2,bh2);
+      c.fillStyle=esCalc?'#1565c0':'#111'; c.font='bold 13px Arial'; c.textAlign='center';
+      c.fillText(String(vals[i]||'—'), bx+bw2/2, by+20);
+    });
+  };
+
+  inspAlambreRollos.forEach((r, ri) => {
+    // Etiqueta del rollo
+    c.fillStyle='#1565c0'; c.fillRect(0,curY,W,18);
+    c.fillStyle='white'; c.font='bold 11px Arial'; c.textAlign='left';
+    c.fillText(`ROLLO ${ri+1}`, 8, curY+13);
+    curY += 18;
+
+    drawRolloFila('C', [r.c_dec_parc,r.c_dec_libre,r.c_red_area,r.c_resist1,r.c_resist2,r.c_hrb], curY);
+    curY += ROLLO_H;
+    drawRolloFila('P', [r.p_dec_parc,r.p_dec_libre,r.p_red_area,r.p_resist1,r.p_resist2,r.p_hrb], curY);
+    curY += ROLLO_H;
+  });
+
+  // Pie
+  c.fillStyle='#1565c0'; c.fillRect(0,H-PIE_H,W,PIE_H);
+  c.fillStyle='white'; c.font='11px Arial'; c.textAlign='left';
+  c.fillText('Registrado por: '+usuarioActual+'   |   '+new Date().toLocaleString('es-MX'), 14, H-PIE_H+22);
+  c.textAlign='right';
+  c.fillText('TOOL CN — FO-CA-019 Rev 2.0', W-14, H-PIE_H+22);
+
+  resolve(canvas.toDataURL('image/jpeg',0.75).split(',')[1]);
+}
+
+function cerrarModalInspAlambre() {
+  document.getElementById('modalInspAlambre').classList.remove('open');
+}
+
+function abrirModalDestinoAlambre() {
+  const btns = document.getElementById('destinoBtnsAlambre');
+  btns.innerHTML = '';
+  DESTINOS.forEach(d => {
+    const tc  = d.textColor || '#000';
+    const btn = document.createElement('button');
+    btn.className = 'destino-btn';
+    btn.style.cssText = `background:${d.color1||'#fff'};color:${tc};border:2px solid rgba(0,0,0,.15);
+      display:grid;grid-template-columns:100px 1fr auto;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;`;
+    const info = document.createElement('div');
+    info.style.cssText = 'text-align:left;font-size:.65rem;font-weight:700;line-height:1.5;opacity:.9;';
+    info.innerHTML = `<div>${d.etiqueta||''}</div><div>${d.pintura||''}</div>`;
+    btn.appendChild(info);
+    const nom = document.createElement('div');
+    nom.style.cssText = 'font-size:1rem;font-weight:900;text-align:center;';
+    nom.textContent = d.label;
+    btn.appendChild(nom);
+    const sq = document.createElement('div');
+    sq.style.cssText = 'display:flex;gap:3px;justify-content:flex-end;';
+    (d.squares||[]).forEach(col => {
+      const s = document.createElement('span');
+      s.style.cssText = `display:inline-block;width:28px;height:18px;background:${col};border:2px solid rgba(0,0,0,.4);border-radius:2px;`;
+      sq.appendChild(s);
+    });
+    btn.appendChild(sq);
+    btn.onclick = () => {
+      aplicarDestinoAlambre(d);
+      document.getElementById('modalDestinoAlambre').classList.remove('open');
+    };
+    btns.appendChild(btn);
+  });
+  document.getElementById('modalDestinoAlambre').classList.add('open');
+}
+
+function iaDropFotos(event) {
+  event.preventDefault();
+  const files = Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  const total = inspAlambreFotosUrls.length + inspAlambreFotosBase64.length;
+  const espacio = 16 - total;
+  files.slice(0, espacio).forEach(file => {
+    comprimirImagen(file, (b64) => { inspAlambreFotosBase64.push(b64); renderFotosAlambre(); });
+  });
 }
 </script>
 </body>

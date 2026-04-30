@@ -1569,35 +1569,66 @@ function crudCatalogo(item) {
 // ══════════════════════════════════════════════════════════════════════
 function getMateriaPrimaData() {
   try {
-    const ss    = SpreadsheetApp.openById(ID_HOJA_OM);
-    const sheet = ss.getSheetByName("ENTRADAS_MP");
-    const data  = sheet.getDataRange().getValues();
-    const col   = {
-      ID: 0, PROVEEDOR: 1, FECHA: 2, DIAMETRO: 3, ACERO: 4, N_ROLLO: 5, KILOS: 6,
-      COLADA: 7, SELLO: 8, N_REMISION: 9, CONSECUTIVO: 10, ESTADO: 11,
-      FECHA_INSP: 18, C_DEC_PARC: 19, C_DEC_LIBRE: 20, P_DEC_PARCIAL: 21,
-      P_DEC_LIBRE: 22, RESIST_C: 23, RESIST_P: 24
-    };
-    return data.slice(1).filter(r => r[col.ESTADO] === "ACTIVO").map(r => ({
-      id:         r[col.ID],
-      proveedor:  r[col.PROVEEDOR],
-      fecha:      r[col.FECHA] instanceof Date ? Utilities.formatDate(r[col.FECHA], "GMT-6", "dd/MM/yyyy") : r[col.FECHA],
-      diametro:   parseFloat(r[col.DIAMETRO]) || 0,
-      aceroFull:  String(r[col.ACERO]),
-      aceroLimpio:String(r[col.ACERO]).replace(/\D/g, ""),
-      n_rollo:    r[col.N_ROLLO],
-      kilos:      parseFloat(r[col.KILOS]) || 0,
-      colada:     r[col.COLADA],
-      sello:      r[col.SELLO],
-      n_remision: r[col.N_REMISION],
-      consecutivo:r[col.CONSECUTIVO],
-      f_insp:     r[col.FECHA_INSP] instanceof Date ? Utilities.formatDate(r[col.FECHA_INSP], "GMT-6", "dd/MM/yyyy") : r[col.FECHA_INSP],
-      c_parc: r[col.C_DEC_PARC], c_total: r[col.C_DEC_LIBRE],
-      p_parc: r[col.P_DEC_PARCIAL], p_total: r[col.P_DEC_LIBRE],
-      res_c: r[col.RESIST_C], res_p: r[col.RESIST_P],
-      tieneInsp: (r[col.FECHA_INSP] || r[col.RESIST_C]) ? true : false
-    }));
-  } catch (e) { return { error: e.toString() }; }
+    const ss      = SpreadsheetApp.openById(ID_HOJA_OM);
+    const sheet   = ss.getSheetByName("ENTRADAS_MP");
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    const colsBase = sheet.getRange(2, 1,  lastRow - 1, 12).getValues(); // A-L
+    const colsInsp = sheet.getRange(2, 19, lastRow - 1, 14).getValues(); // S-AF
+
+    const tz  = "GMT-6";
+    const fmt = (v) => v instanceof Date ? Utilities.formatDate(v, tz, "dd/MM/yyyy") : String(v || "");
+    const num = (v) => parseFloat(v) || 0;
+    const str = (v) => String(v == null ? "" : v);
+
+    const resultado = [];
+    for (var i = 0; i < colsBase.length; i++) {
+      const b = colsBase[i];
+      const s = colsInsp[i];
+
+      const estado = str(b[11]).trim().toUpperCase();
+      if (estado !== 'ACTIVO' && estado !== '') continue;
+      if (!b[0]) continue;
+
+      resultado.push({
+        id:          b[0],
+        proveedor:   str(b[1]),
+        fecha:       fmt(b[2]),
+        diametro:    num(b[3]),
+        aceroFull:   str(b[4]),
+        aceroLimpio: str(b[4]).replace(/\D/g, ""),
+        n_rollo:     str(b[5]),
+        kilos:       num(b[6]),
+        colada:      str(b[7]),
+        sello:       str(b[8]),
+        n_remision:  str(b[9]),
+        consecutivo: str(b[10]),
+        // s[0]=S  s[1]=T  s[2]=U  s[3]=V  s[4]=W
+        // s[5]=X  s[6]=Y  s[7]=Z  s[8]=AA s[9]=AB
+        // s[10]=AC s[11]=AD s[12]=AE s[13]=AF
+        f_insp:      fmt(s[0]),
+        cDecParc:    str(s[1]),
+        cDecLibre:   str(s[2]),
+        pDecParc:    str(s[3]),
+        pDecLibre:   str(s[4]),
+        resistC:     str(s[5]),
+        resistP:     str(s[6]),
+        redAreaC:    str(s[7]),
+        redAreaP:    str(s[8]),
+        destino:     str(s[9]),
+        urlFotos:    str(s[10]),
+        c_hrb:       str(s[11]),
+        p_hrb:       str(s[12]),
+        calculos:    str(s[13]),
+        tieneInsp:   !!(s[0] || s[5])
+      });
+    }
+    return resultado;
+  } catch (e) {
+    Logger.log("getMateriaPrimaData error: " + e.toString());
+    return [];
+  }
 }
 
 function verificarSellosDuplicados(sellosNuevos) {
@@ -1740,50 +1771,70 @@ function actualizarEstadoMP(id, nuevoEstado, infoSalida, nombreUsuario) {
 
 function getEntradasMPMeses(meses) {
   try {
-    const ss    = SpreadsheetApp.openById(ID_HOJA_OM);
-    const sheet = ss.getSheetByName("ENTRADAS_MP");
-    const data  = sheet.getDataRange().getValues();
+    const ss      = SpreadsheetApp.openById(ID_HOJA_OM);
+    const sheet   = ss.getSheetByName("ENTRADAS_MP");
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
     const limite = new Date();
     limite.setMonth(limite.getMonth() - (meses || 6));
-    limite.setHours(0,0,0,0);
-    const col = {
-      ID:0, PROVEEDOR:1, FECHA:2, DIAMETRO:3, ACERO:4, N_ROLLO:5, KILOS:6,
-      COLADA:7, SELLO:8, N_REMISION:9, CONSECUTIVO:10, ESTADO:11,
-      FECHA_INSP:18, C_DEC_PARC:19, C_DEC_LIBRE:20,
-      P_DEC_PARCIAL:21, P_DEC_LIBRE:22, RESIST_C:23, RESIST_P:24
-    };
-    return data.slice(1)
-      .filter(r => {
-        const f = r[col.FECHA] instanceof Date ? r[col.FECHA] : new Date(r[col.FECHA]);
-        return !isNaN(f) && f >= limite;
-      })
-      .map(r => ({
-        id:         r[col.ID],
-        proveedor:  r[col.PROVEEDOR],
-        fecha:      r[col.FECHA] instanceof Date
-                      ? Utilities.formatDate(r[col.FECHA],"GMT-6","dd/MM/yyyy")
-                      : r[col.FECHA],
-        diametro:   parseFloat(r[col.DIAMETRO]) || 0,
-        aceroFull:  String(r[col.ACERO]),
-        aceroLimpio:String(r[col.ACERO]).replace(/\D/g,""),
-        n_rollo:    r[col.N_ROLLO],
-        kilos:      parseFloat(r[col.KILOS]) || 0,
-        colada:     r[col.COLADA],
-        sello:      r[col.SELLO],
-        n_remision: r[col.N_REMISION],
-        consecutivo:r[col.CONSECUTIVO],
-        estado:     String(r[col.ESTADO] || ""),
-        f_insp:     r[col.FECHA_INSP] instanceof Date
-                      ? Utilities.formatDate(r[col.FECHA_INSP],"GMT-6","dd/MM/yyyy")
-                      : r[col.FECHA_INSP],
-        c_parc: r[col.C_DEC_PARC],  c_total: r[col.C_DEC_LIBRE],
-        p_parc: r[col.P_DEC_PARCIAL], p_total: r[col.P_DEC_LIBRE],
-        res_c:  r[col.RESIST_C],    res_p:   r[col.RESIST_P],
-        tieneInsp: !!(r[col.FECHA_INSP] || r[col.RESIST_C])
-      }));
-  } catch(e) { return []; }
-}
+    limite.setHours(0, 0, 0, 0);
 
+    const colsBase = sheet.getRange(2, 1,  lastRow - 1, 12).getValues(); // A-L
+    const colsInsp = sheet.getRange(2, 19, lastRow - 1, 14).getValues(); // S-AF
+
+    const tz  = "GMT-6";
+    const fmt = (v) => v instanceof Date ? Utilities.formatDate(v, tz, "dd/MM/yyyy") : String(v || "");
+    const num = (v) => parseFloat(v) || 0;
+    const str = (v) => String(v == null ? "" : v);
+
+    const resultado = [];
+    for (var i = 0; i < colsBase.length; i++) {
+      const b = colsBase[i];
+      const s = colsInsp[i];
+      if (!b[0]) continue;
+
+      const fRaw = b[2];
+      const f    = fRaw instanceof Date ? fRaw : new Date(fRaw);
+      if (isNaN(f) || f < limite) continue;
+
+      resultado.push({
+        id:          b[0],
+        proveedor:   str(b[1]),
+        fecha:       fmt(b[2]),
+        diametro:    num(b[3]),
+        aceroFull:   str(b[4]),
+        aceroLimpio: str(b[4]).replace(/\D/g, ""),
+        n_rollo:     str(b[5]),
+        kilos:       num(b[6]),
+        colada:      str(b[7]),
+        sello:       str(b[8]),
+        n_remision:  str(b[9]),
+        consecutivo: str(b[10]),
+        estado:      str(b[11]),
+        f_insp:      fmt(s[0]),
+        cDecParc:    str(s[1]),
+        cDecLibre:   str(s[2]),
+        pDecParc:    str(s[3]),
+        pDecLibre:   str(s[4]),
+        resistC:     str(s[5]),
+        resistP:     str(s[6]),
+        redAreaC:    str(s[7]),
+        redAreaP:    str(s[8]),
+        destino:     str(s[9]),
+        urlFotos:    str(s[10]),
+        c_hrb:       str(s[11]),
+        p_hrb:       str(s[12]),
+        calculos:    str(s[13]),
+        tieneInsp:   !!(s[0] || s[5])
+      });
+    }
+    return resultado;
+  } catch (e) {
+    Logger.log("getEntradasMPMeses error: " + e.toString());
+    return [];
+  }
+}
 
 var ID_CARPETA_INSPECCIONES = '1RxKI4G5P1Q27Ewd6FD-PNHsm04AZJ0en';
 
@@ -1793,7 +1844,6 @@ function guardarInspeccionAlambron(payload) {
     var sheet = ss.getSheetByName("ENTRADAS_MP");
     var data  = sheet.getDataRange().getValues();
 
-    // Buscar fila por ID (Col A)
     var rowIndex = -1;
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]).trim() === String(payload.registroId).trim()) {
@@ -1803,54 +1853,314 @@ function guardarInspeccionAlambron(payload) {
     if (rowIndex === -1) throw new Error("No se encontró ID: " + payload.registroId);
     var sheetRow = rowIndex + 1;
 
-    // Subir fotos — intenta carpeta, si falla usa raíz
-    var urlFotos = '';
+    // ── Subir fotos nuevas a Drive ──
+    var urlFotosNuevas = '';
     if (payload.fotos && payload.fotos.length > 0) {
       var folder = null;
-      try { folder = DriveApp.getFolderById(ID_CARPETA_INSPECCIONES); } catch(ef) { folder = DriveApp.getRootFolder(); }
-      
-      var urls = payload.fotos.map(function(b64, i) {
+      try { folder = DriveApp.getFolderById(ID_CARPETA_INSPECCIONES); }
+      catch(ef) { folder = DriveApp.getRootFolder(); }
+      var urls = payload.fotos.map(function(b64, idx) {
         var clean = b64.replace(/^data:image\/\w+;base64,/, '');
-        var blob  = Utilities.newBlob(Utilities.base64Decode(clean), 'image/jpeg',
-                      'insp_' + payload.registroId + '_' + (i+1) + '.jpg');
-        var file  = folder.createFile(blob);
+        var blob  = Utilities.newBlob(
+          Utilities.base64Decode(clean), 'image/jpeg',
+          'insp_' + payload.registroId + '_' + (idx + 1) + '.jpg'
+        );
+        var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         return 'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing';
       });
-      urlFotos = urls.join(',');
+      urlFotosNuevas = urls.join(',');
     }
 
-    // Historial en Col R (índice 17)
-    var ahora   = Utilities.formatDate(new Date(), "GMT-6", "dd/MM/yyyy HH:mm:ss");
-    var usuario = String(payload.usuario || "DESCONOCIDO").trim().toUpperCase();
+    var urlsExist  = payload.urlsFotosExistentes
+      ? payload.urlsFotosExistentes.split(',').filter(function(u){ return u.trim(); }) : [];
+    var urlsNuevas = urlFotosNuevas
+      ? urlFotosNuevas.split(',').filter(function(u){ return u.trim(); }) : [];
+    var todasUrls = urlsExist.concat(urlsNuevas).join(',');
+
+    // ── Historial ──
+    var ahora        = Utilities.formatDate(new Date(), "GMT-6", "dd/MM/yyyy HH:mm:ss");
+    var usuario      = String(payload.usuario || "DESCONOCIDO").trim().toUpperCase();
     var histAnterior = String(data[rowIndex][17] || "").trim();
-    var histNuevo    = ahora + " | " + usuario + " registró inspección";
-    var histFinal    = histAnterior ? histAnterior + "\n" + histNuevo : histNuevo;
+    var descripcion  = payload.descripcionCambios || 'Registró inspección';
+    var histFinal    = histAnterior
+      ? histAnterior + "\n" + ahora + " | " + usuario + " — " + descripcion
+      : ahora + " | " + usuario + " — " + descripcion;
 
-    sheet.getRange(sheetRow, 18).setValue(histFinal);          // Col R
-    sheet.getRange(sheetRow, 19).setValue(payload.fechaInsp);  // Col S
-    sheet.getRange(sheetRow, 20).setValue(payload.cDecParc);   // Col T
-    sheet.getRange(sheetRow, 21).setValue(payload.cDecLibre);  // Col U
-    sheet.getRange(sheetRow, 22).setValue(payload.pDecParc);   // Col V
-    sheet.getRange(sheetRow, 23).setValue(payload.pDecLibre);  // Col W
-    sheet.getRange(sheetRow, 24).setValue(payload.resistC);    // Col X
-    sheet.getRange(sheetRow, 25).setValue(payload.resistP);    // Col Y
-    sheet.getRange(sheetRow, 26).setValue(payload.redAreaC);   // Col Z
-    sheet.getRange(sheetRow, 27).setValue(payload.redAreaP);   // Col AA
-    sheet.getRange(sheetRow, 28).setValue(payload.destino);    // Col AB
-    if (urlFotos) sheet.getRange(sheetRow, 29).setValue(urlFotos); // Col AC
+    // ── Escribir campos ──
+    sheet.getRange(sheetRow, 18).setValue(histFinal);
+    sheet.getRange(sheetRow, 19).setValue(payload.fechaInsp);
+    sheet.getRange(sheetRow, 20).setValue(payload.cDecParc);
+    sheet.getRange(sheetRow, 21).setValue(payload.cDecLibre);
+    sheet.getRange(sheetRow, 22).setValue(payload.pDecParc);
+    sheet.getRange(sheetRow, 23).setValue(payload.pDecLibre);
+    sheet.getRange(sheetRow, 24).setValue(payload.resistC);
+    sheet.getRange(sheetRow, 25).setValue(payload.resistP);
+    sheet.getRange(sheetRow, 26).setValue(payload.redAreaC);
+    sheet.getRange(sheetRow, 27).setValue(payload.redAreaP);
+    sheet.getRange(sheetRow, 28).setValue(payload.destino);
+    sheet.getRange(sheetRow, 30).setValue(payload.durezaC);
+    sheet.getRange(sheetRow, 31).setValue(payload.durezaP);
+    sheet.getRange(sheetRow, 32).setValue(payload.calculos || '');
+    if (todasUrls) sheet.getRange(sheetRow, 29).setValue(todasUrls);
 
-    return { ok: true };
+    // ── Telegram — supergrupo, topic RECOCIDO ──
+    var telegramOk    = false;
+    var telegramError = '';
+    try {
+      if (payload.canvasB64 && payload.canvasB64.length > 100) {
+
+        var imgBlob = Utilities.newBlob(
+          Utilities.base64Decode(payload.canvasB64),
+          'image/jpeg',
+          'inspeccion_' + payload.registroId + '.jpg'
+        );
+
+        var sello = String(data[rowIndex][8] || '');
+        var sae   = String(data[rowIndex][4] || '');
+        var diamp = String(data[rowIndex][3] || '');
+        var kilos = String(data[rowIndex][6] || '');
+
+        var caption = '🔬 INSPECCION RECOCIDO\n'
+          + '━━━━━━━━━━━━━━\n'
+          + '🏷 Sello: '  + sello + '\n'
+          + '🧪 SAE: '    + sae   + '\n'
+          + '📏 Diam: '   + diamp + ' mm\n'
+          + '⚖ Kilos: '   + kilos + ' kg\n'
+          + '━━━━━━━━━━━━━━\n'
+          + '👤 ' + usuario + '\n'
+          + '🕐 ' + ahora;
+
+        var formData = {
+          'chat_id':           '-1001197877827',
+          'message_thread_id': '130378',
+          'caption':           caption,
+          'photo':             imgBlob
+        };
+
+        var resp = UrlFetchApp.fetch(
+          'https://api.telegram.org/bot' + TOKEN + '/sendPhoto',
+          {
+            method:             'post',
+            muteHttpExceptions: true,
+            payload:            formData
+          }
+        );
+
+        var respJson = JSON.parse(resp.getContentText());
+        Logger.log('Telegram response: ' + resp.getContentText());
+        if (respJson.ok) {
+          telegramOk = true;
+        } else {
+          telegramError = respJson.description || 'Error desconocido';
+          Logger.log('Telegram error: ' + telegramError);
+        }
+      } else {
+        telegramError = 'canvasB64 vacio (length=' + (payload.canvasB64 ? payload.canvasB64.length : 0) + ')';
+        Logger.log('Telegram skip: ' + telegramError);
+      }
+    } catch(eTg) {
+      telegramError = eTg.toString();
+      Logger.log('Telegram excepcion: ' + telegramError);
+    }
+
+    return { ok: true, telegramOk: telegramOk, telegramError: telegramError };
+
   } catch(e) {
     Logger.log("guardarInspeccionAlambron error: " + e.toString());
     return { ok: false, msg: e.toString() };
   }
 }
 
-function autorizarPermisos() {
-  // Fuerza el dialogo de autorización para todos los servicios usados
-  try { DriveApp.getRootFolder(); Logger.log("✅ Drive: OK"); } catch(e) { Logger.log("Drive: " + e); }
-  try { SpreadsheetApp.openById(ID_HOJA_OM); Logger.log("✅ Sheets: OK"); } catch(e) { Logger.log("Sheets: " + e); }
-  try { SpreadsheetApp.openById(ID_HOJA_ESTANDARES); Logger.log("✅ Estandares: OK"); } catch(e) { Logger.log("Estandares: " + e); }
-  Logger.log("✅ Autorización completada");
+function getFotosBase64(urls) {
+  try {
+    if (!urls || !urls.length) return [];
+    return urls.map(function(url) {
+      try {
+        // Extraer el ID del archivo de la URL de Drive
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (!match) return null;
+        var fileId = match[1];
+        var file   = DriveApp.getFileById(fileId);
+        var blob   = file.getBlob();
+        var b64    = Utilities.base64Encode(blob.getBytes());
+        return 'data:' + blob.getContentType() + ';base64,' + b64;
+      } catch(ef) {
+        Logger.log('Error descargando foto: ' + ef.toString());
+        return null;
+      }
+    }).filter(function(b) { return b !== null; });
+  } catch(e) {
+    Logger.log('getFotosBase64 error: ' + e.toString());
+    return [];
+  }
+}
+
+function getOrdenesAlambres(meses) {
+  try {
+    var ss      = SpreadsheetApp.openById(ID_HOJA_ESTANDARES);
+    var sheet   = ss.getSheetByName("ORDENES");
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    var lastRow  = sheet.getLastRow();
+    var lastCol  = Math.max(sheet.getLastColumn(), 46); // hasta col AT
+    var data     = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    var limite = new Date();
+    limite.setMonth(limite.getMonth() - (meses || 3));
+    limite.setHours(0, 0, 0, 0);
+
+    var tz  = "GMT-6";
+    var str = function(v){ return String(v == null ? "" : v); };
+    var num = function(v){ return parseFloat(v) || 0; };
+    var fmt = function(v){
+      return v instanceof Date ? Utilities.formatDate(v, tz, "dd/MM/yyyy") : str(v);
+    };
+
+    var resultado = [];
+    for (var i = 0; i < data.length; i++) {
+      var r = data[i];
+      if (!r[0]) continue;                                    // sin ID
+      var serie   = str(r[4]).trim().toUpperCase();           // Col E
+      var proceso = str(r[11]).trim().toUpperCase();          // Col L
+      if (serie !== 'T') continue;
+      if (proceso !== 'TREFILADO') continue;
+      var fRaw = r[3];                                        // Col D
+      var f    = fRaw instanceof Date ? fRaw : new Date(fRaw);
+      if (isNaN(f) || f < limite) continue;
+
+      // Leer cols AG-AT (índices 32-45)
+      resultado.push({
+        id:          str(r[0]),
+        pedido:      str(r[1]),
+        partida:     str(r[2]),
+        fecha:       fmt(r[3]),
+        serie:       str(r[4]),
+        orden:       str(r[5]),
+        codigo:      str(r[6]),
+        descripcion: str(r[7]),
+        cantidad:    num(r[8]),
+        unidad:      str(r[9]),
+        sec:         str(r[10]),
+        proceso:     str(r[11]),
+        maquina:     str(r[12]),
+        solicitado:  num(r[13]),
+        producido:   num(r[14]),
+        estado:      str(r[15]),
+        tipo:        str(r[19]),     // Col T
+        diametro:    str(r[20]),     // Col U
+        presentacion:str(r[21]),     // Col V
+        tolerancia:  str(r[22]),     // Col W
+        acero:       str(r[24]),     // Col Y
+        // Inspección guardada AG(32)-AT(45)
+        c_dec_parc:  str(r[32]),
+        c_dec_libre: str(r[33]),
+        p_dec_parc:  str(r[34]),
+        p_dec_libre: str(r[35]),
+        resist_c:    str(r[36]),
+        resist_p:    str(r[37]),
+        c_red_area:  str(r[39]),
+        p_red_area:  str(r[40]),
+        disposicion: str(r[41]),
+        url_fotos:   str(r[42]),
+        c_hrb:       str(r[43]),
+        p_hrb:       str(r[44]),
+        calculos:    str(r[45]),
+        tieneInsp:   !!(r[32] || r[36])
+      });
+    }
+    return resultado;
+  } catch(e) {
+    Logger.log("getOrdenesAlambres error: " + e.toString());
+    return [];
+  }
+}
+
+function guardarInspeccionAlambre(payload) {
+  try {
+    var ss    = SpreadsheetApp.openById(ID_HOJA_ESTANDARES);
+    var sheet = ss.getSheetByName("ORDENES");
+    var data  = sheet.getDataRange().getValues();
+
+    var rowIndex = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(payload.registroId).trim()) {
+        rowIndex = i; break;
+      }
+    }
+    if (rowIndex === -1) throw new Error("No se encontró ID: " + payload.registroId);
+    var sheetRow = rowIndex + 1;
+
+    // Subir fotos
+    var urlFotosNuevas = '';
+    if (payload.fotos && payload.fotos.length > 0) {
+      var folder = null;
+      try { folder = DriveApp.getFolderById(ID_CARPETA_INSPECCIONES); }
+      catch(ef) { folder = DriveApp.getRootFolder(); }
+      var urls = payload.fotos.map(function(b64, idx) {
+        var clean = b64.replace(/^data:image\/\w+;base64,/, '');
+        var blob  = Utilities.newBlob(Utilities.base64Decode(clean), 'image/jpeg',
+          'insp_alambre_' + payload.registroId + '_' + (idx+1) + '.jpg');
+        var file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        return 'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing';
+      });
+      urlFotosNuevas = urls.join(',');
+    }
+    var urlsExist  = payload.urlsExistentes
+      ? payload.urlsExistentes.split(',').filter(function(u){ return u.trim(); }) : [];
+    var urlsNuevas = urlFotosNuevas
+      ? urlFotosNuevas.split(',').filter(function(u){ return u.trim(); }) : [];
+    var todasUrls = urlsExist.concat(urlsNuevas).join(',');
+
+    // Escribir cols AG(33)-AT(46) — base 1
+    sheet.getRange(sheetRow, 33).setValue(payload.c_dec_parc  || '');  // AG
+    sheet.getRange(sheetRow, 34).setValue(payload.c_dec_libre || '');  // AH
+    sheet.getRange(sheetRow, 35).setValue(payload.p_dec_parc  || '');  // AI
+    sheet.getRange(sheetRow, 36).setValue(payload.p_dec_libre || '');  // AJ
+    sheet.getRange(sheetRow, 37).setValue(payload.resist_c    || '');  // AK
+    sheet.getRange(sheetRow, 38).setValue(payload.resist_p    || '');  // AL
+    sheet.getRange(sheetRow, 40).setValue(payload.c_red_area  || '');  // AN
+    sheet.getRange(sheetRow, 41).setValue(payload.p_red_area  || '');  // AO
+    sheet.getRange(sheetRow, 42).setValue(payload.disposicion || '');  // AP
+    sheet.getRange(sheetRow, 44).setValue(payload.c_hrb       || '');  // AR
+    sheet.getRange(sheetRow, 45).setValue(payload.p_hrb       || '');  // AS
+    sheet.getRange(sheetRow, 46).setValue(payload.calculos    || '');  // AT
+    if (todasUrls) sheet.getRange(sheetRow, 43).setValue(todasUrls);   // AQ
+
+    // Telegram
+    var telegramOk = false, telegramError = '';
+    try {
+      if (payload.canvasB64 && payload.canvasB64.length > 100) {
+        var ahora   = Utilities.formatDate(new Date(), "GMT-6", "dd/MM/yyyy HH:mm:ss");
+        var usuario = String(payload.usuario || "DESCONOCIDO").trim().toUpperCase();
+        var imgBlob = Utilities.newBlob(
+          Utilities.base64Decode(payload.canvasB64), 'image/jpeg',
+          'insp_alambre_' + payload.registroId + '.jpg');
+        var caption = '🔬 INSPECCION ALAMBRE\n'
+          + '━━━━━━━━━━━━━━\n'
+          + '📋 Orden: '  + String(data[rowIndex][5] || '') + '\n'
+          + '🔩 SAE: '    + String(data[rowIndex][24] || '') + '\n'
+          + '📏 Diam: '   + String(data[rowIndex][20] || '') + ' mm\n'
+          + '⚖ Cant: '    + String(data[rowIndex][8] || '') + '\n'
+          + '━━━━━━━━━━━━━━\n'
+          + '👤 ' + usuario + '\n'
+          + '🕐 ' + ahora;
+        var resp = UrlFetchApp.fetch(
+          'https://api.telegram.org/bot' + TOKEN + '/sendPhoto',
+          { method:'post', muteHttpExceptions:true,
+            payload:{ chat_id:'-1001197877827', message_thread_id:'130378',
+              caption:caption, photo:imgBlob }});
+        var rj = JSON.parse(resp.getContentText());
+        telegramOk = rj.ok;
+        if (!rj.ok) telegramError = rj.description || 'Error';
+        Logger.log('Telegram alambre: ' + resp.getContentText());
+      }
+    } catch(eTg) { telegramError = eTg.toString(); }
+
+    return { ok: true, telegramOk: telegramOk, telegramError: telegramError };
+  } catch(e) {
+    Logger.log("guardarInspeccionAlambre error: " + e.toString());
+    return { ok: false, msg: e.toString() };
+  }
 }
