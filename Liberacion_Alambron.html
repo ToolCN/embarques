@@ -890,20 +890,29 @@ function doLogin() {
 }
 
 function _validarConLista(usuario, pass) {
-  // getUsuariosLogin devuelve array de objetos {nombre, password, ...}
-  // o array de strings según la implementación
   const u = _usuariosDB.find(x =>
     (typeof x === 'object' ? x.nombre : x).toUpperCase() === usuario
   );
   if (!u) { mostrarErrorLogin('Usuario no encontrado.'); return; }
+
   const passGuardada = typeof u === 'object' ? u.password : null;
   if (passGuardada !== null && passGuardada !== pass) {
     mostrarErrorLogin('Contraseña incorrecta.');
     document.getElementById('passInput').value = '';
     return;
   }
+
+  // Verificar que tenga permiso LIBERACION en col F (permisos)
+  const permisos = typeof u === 'object' ? (u.permisos || '') : '';
+  const tieneAcceso = permisos.split(',').map(p => p.trim().toUpperCase()).includes('LIBERACION');
+  if (!tieneAcceso) {
+    mostrarErrorLogin('No tienes acceso a esta aplicación.');
+    document.getElementById('passInput').value = '';
+    return;
+  }
+
   // Login correcto
-  try { localStorage.setItem(SK_USER, usuario); localStorage.setItem(SK_PASS, pass); } catch(e) {}
+  try { localStorage.setItem(SK_USER, usuario); } catch(e) {}
   entrarApp(usuario);
 }
 function mostrarErrorLogin(msg) {
@@ -1264,7 +1273,7 @@ function renderTabla() {
         } else {
           html += `<td>
             <button class="btn-insp${tieneInsp?' con-datos':''}"
-                    onclick="abrirModalInsp('${idx}', '${idx}')">
+                    onclick="abrirModalInsp('${row.id}')">
               ${tieneInsp ? '📋 Ver' : '+ Ingresar'}
             </button>
           </td>`;
@@ -1531,14 +1540,13 @@ function cuadradoPorAcero(acero) {
   return '#000000'; // negro para 1004,1006,1008,1010,1018
 }
 
-function abrirModalInsp(filaIgnorada, rowIdx) {
-  const idx = parseInt(rowIdx);
+function abrirModalInsp(registroId) {
   const src = tabActual === 'existencia' ? dataGlobal : dataEntradas;
-  const row = src[idx];
+  const row = src.find(r => String(r.id) === String(registroId));
   if (!row) return;
 
   // Usamos el id del registro (col A) como referencia para el GAS
-  inspFilaHoja = row.id || (idx + 2); // +2 porque Sheets tiene header en fila 1
+  inspFilaHoja = row.id;
   inspRowData  = row;
   inspFotosBase64 = [];
   inspFotosUrls   = row.urlFotos ? row.urlFotos.split(',').filter(Boolean) : [];
@@ -1555,15 +1563,13 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
   // Fecha inspección: si ya tiene la usa, si no hoy
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('inpFechaInsp').value = row.f_insp
-    ? row.f_insp.split('/').reverse().join('-')   // convierte dd/MM/yyyy → yyyy-MM-dd
+    ? row.f_insp.split('/').reverse().join('-')
     : hoy;
 
-  // Campos editables previos
   // Helper para partir valor con / de forma segura
   const splitSlash = (v, idx) => {
     if (!v) return '';
     const s = String(v);
-    // Si parece una fecha o texto raro (no tiene dígitos ni /) devolver vacío
     if (!/[\d.]/.test(s)) return '';
     const parts = s.split('/');
     return (parts[idx] || '').trim();
@@ -1582,7 +1588,6 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
   document.getElementById('inpRedAreaC').value  = row.redAreaC || '';
   document.getElementById('inpRedAreaP').value  = row.redAreaP || '';
 
-  // Fotos: limpiar campos calculados de ØI/ØF/Libras (no se guardan, son inputs)
   document.getElementById('fotosGrid').innerHTML = '';
   document.getElementById('fotosEstado').textContent = '';
   const da = document.getElementById('fotosDropArea');
@@ -1618,7 +1623,6 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
   document.getElementById('inpPDiamI').value  = calcMap['P_DiamI']  || '';
   document.getElementById('inpPDiamF').value  = calcMap['P_DiamF']  || '';
   document.getElementById('inpPLibras').value = calcMap['P_Libras'] || '';
-  // Recalcular campos derivados con los valores restaurados
   if (calcMap['C_DiamI'] || calcMap['C_DiamF']) calcRedArea('C');
   else { document.getElementById('inpRedAreaC').value = calcMap['C_RedA'] || ''; }
   if (calcMap['P_DiamI'] || calcMap['P_DiamF']) calcRedArea('P');
@@ -1634,9 +1638,7 @@ function abrirModalInsp(filaIgnorada, rowIdx) {
     document.getElementById('inpResistP2').value = calcMap['P_KSI']   || '';
   }
 
-  // Renderizar zona de fotos (mostrará las guardadas en Drive si hay)
   renderFotosZona();
-
   document.getElementById('modalInsp').classList.add('open');
 }
 
